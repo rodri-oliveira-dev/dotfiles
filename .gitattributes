@@ -1,5 +1,27 @@
+# Normalize text files and keep diffs stable across Windows, Linux, Codespaces, and CI.
 * text=auto eol=lf
-*.sh text eol=lf
-*.bash text eol=lf
-*.yml text eol=lf
-*.yaml text eol=lf
+
+# Shell and repository configuration use LF explicitly.
+*.sh             text eol=lf
+*.bash           text eol=lf
+*.json           text eol=lf
+*.yaml           text eol=lf
+*.yml            text eol=lf
+*.md             text eol=lf
+*.editorconfig   text eol=lf
+*.gitignore      text eol=lf
+*.gitattributes  text eol=lf
+
+# Windows command scripts keep CRLF when introduced.
+*.cmd            text eol=crlf
+*.bat            text eol=crlf
+*.ps1            text eol=lf
+
+# Binary files must not be normalized as text.
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.pdf            binary
+*.zip            binary
