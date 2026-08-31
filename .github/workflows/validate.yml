@@ -1,0 +1,33 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: Shell validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate Bash syntax
+        shell: bash
+        run: |
+          bash -n install.sh
+          bash -n bin/*
+          bash -n shell/*.sh
+
+      - name: Run ShellCheck
+        shell: bash
+        run: |
+          shellcheck install.sh
+          shellcheck bin/*
+          shellcheck shell/*.sh
