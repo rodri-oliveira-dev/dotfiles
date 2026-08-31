@@ -32,6 +32,14 @@ This repository contains only developer-level preferences and helpers. Project-s
 
 ```text
 dotfiles/
+├── .agents/
+│   └── skills/
+│       ├── codespaces-integration/
+│       │   └── SKILL.md
+│       ├── dotfiles-change/
+│       │   └── SKILL.md
+│       └── shell-hardening/
+│           └── SKILL.md
 ├── .github/
 │   └── workflows/
 │       └── validate.yml
@@ -48,11 +56,25 @@ dotfiles/
 ├── .editorconfig
 ├── .gitattributes
 ├── .gitignore
+├── AGENTS.md
+├── AGENTS.pt-BR.md
 ├── install.sh
 ├── LICENSE
 ├── README.md
 └── README.pt-BR.md
 ```
+
+## Repository governance
+
+This repository follows the same governance philosophy used by the .NET project template, but only applies conventions that make sense for a Bash/Git/Codespaces repository.
+
+- `AGENTS.md` defines repository-wide rules for automated contributors.
+- `.agents/skills/dotfiles-change/` covers general dotfiles changes.
+- `.agents/skills/shell-hardening/` focuses on Bash safety and ShellCheck.
+- `.agents/skills/codespaces-integration/` focuses on the GitHub Codespaces lifecycle and configuration boundaries.
+- `Directory.Build.props` and `Directory.Packages.props` are intentionally absent because this repository does not contain an MSBuild project.
+
+The governance files complement the actual repository configuration; they do not replace it as the source of truth.
 
 ## GitHub Codespaces
 
