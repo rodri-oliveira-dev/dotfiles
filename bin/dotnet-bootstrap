@@ -49,29 +49,29 @@ echo "Restoring NuGet packages..."
 
 if (($# == 0)); then
   case "${#SOLUTIONS[@]}" in
-    0)
-      (cd "$ROOT" && dotnet restore)
-      ;;
-    1)
-      dotnet restore "${SOLUTIONS[0]}"
-      ;;
-    *)
-      print_solution_choices
-      exit 2
-      ;;
+  0)
+    (cd "$ROOT" && dotnet restore)
+    ;;
+  1)
+    dotnet restore "${SOLUTIONS[0]}"
+    ;;
+  *)
+    print_solution_choices
+    exit 2
+    ;;
   esac
 elif [[ "$1" == -* ]]; then
   case "${#SOLUTIONS[@]}" in
-    0)
-      (cd "$ROOT" && dotnet restore "$@")
-      ;;
-    1)
-      dotnet restore "${SOLUTIONS[0]}" "$@"
-      ;;
-    *)
-      print_solution_choices
-      exit 2
-      ;;
+  0)
+    (cd "$ROOT" && dotnet restore "$@")
+    ;;
+  1)
+    dotnet restore "${SOLUTIONS[0]}" "$@"
+    ;;
+  *)
+    print_solution_choices
+    exit 2
+    ;;
   esac
 else
   EXPLICIT_TARGET="$1"
