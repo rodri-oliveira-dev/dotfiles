@@ -25,13 +25,13 @@ EOF
   run bash -c 'cd "$1" && "$2"' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-context"
 
   [ "$status" -eq 0 ]
-  assert_output_contains "$PROJECT_ROOT"
-  assert_output_contains "SDK: 10.0.400"
-  assert_output_contains "global.json: yes"
-  assert_output_contains "Directory.Build.props: yes"
-  assert_output_contains "Central Package Management: yes"
-  assert_output_contains "Local tool manifest: yes"
-  assert_output_contains "App.slnx"
+  assert_contains "$output" "$PROJECT_ROOT"
+  assert_contains "$output" "SDK: 10.0.400"
+  assert_contains "$output" "global.json: yes"
+  assert_contains "$output" "Directory.Build.props: yes"
+  assert_contains "$output" "Central Package Management: yes"
+  assert_contains "$output" "Local tool manifest: yes"
+  assert_contains "$output" "App.slnx"
 
   grep -Fxq "$PROJECT_ROOT|--version" "$DOTNET_LOG"
 }
@@ -44,7 +44,7 @@ EOF
   run bash -c 'cd "$1" && "$2"' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-bootstrap"
 
   [ "$status" -eq 0 ]
-  assert_output_contains "Repository ready."
+  assert_contains "$output" "Repository ready."
 
   grep -Fxq "$PROJECT_ROOT|tool restore" "$DOTNET_LOG"
   grep -Fq "restore $PROJECT_ROOT/App.slnx" "$DOTNET_LOG"
@@ -57,9 +57,9 @@ EOF
   run bash -c 'cd "$1" && "$2"' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-bootstrap"
 
   [ "$status" -eq 2 ]
-  assert_output_contains "Multiple solution files were found"
-  assert_output_contains "App.slnx"
-  assert_output_contains "Samples.slnx"
+  assert_contains "$output" "Multiple solution files were found"
+  assert_contains "$output" "App.slnx"
+  assert_contains "$output" "Samples.slnx"
   [ ! -s "$DOTNET_LOG" ]
 }
 
