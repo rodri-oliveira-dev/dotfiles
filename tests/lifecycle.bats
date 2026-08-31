@@ -36,8 +36,8 @@ setup() {
 
   run "$HOME/.local/bin/dotfiles-doctor"
   [ "$status" -eq 0 ]
-  assert_output_contains "Failures: 0"
-  assert_output_contains "managed $HOME/.bashrc block is present exactly once"
+  assert_contains "$output" "Failures: 0"
+  assert_contains "$output" "managed $HOME/.bashrc block is present exactly once"
 }
 
 @test "uninstall removes only repository-managed state" {
