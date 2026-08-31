@@ -20,7 +20,7 @@ ln -sfn "$DOTFILES_DIR/git/config" "$CONFIG_DIR/gitconfig"
 touch "$BASHRC"
 
 if ! grep -Fq "$MARKER_BEGIN" "$BASHRC"; then
-  cat >> "$BASHRC" <<'EOF'
+  cat >>"$BASHRC" <<'EOF'
 
 # >>> rodri-dotfiles >>>
 DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles"
