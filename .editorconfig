@@ -1,18 +1,23 @@
+# Shared conventions for the dotfiles repository.
 root = true
 
 [*]
 charset = utf-8
 end_of_line = lf
+indent_style = space
+indent_size = 2
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+# Markdown may use trailing spaces for intentional line breaks.
+[*.md]
+trim_trailing_whitespace = false
+
+# Structured configuration files use two-space indentation.
+[*.{json,yml,yaml}]
+indent_size = 2
+
+# Shell scripts use two-space indentation.
 [*.{sh,bash}]
 indent_style = space
 indent_size = 2
-
-[*.{yml,yaml}]
-indent_style = space
-indent_size = 2
-
-[*.md]
-trim_trailing_whitespace = false
