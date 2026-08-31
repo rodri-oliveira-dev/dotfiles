@@ -36,9 +36,9 @@ remove_managed_block() {
     $0 == begin { skipping = 1; next }
     $0 == end   { skipping = 0; next }
     !skipping   { print }
-  ' "$BASHRC" > "$temporary_file"
+  ' "$BASHRC" >"$temporary_file"
 
-  cat "$temporary_file" > "$BASHRC"
+  cat "$temporary_file" >"$BASHRC"
   rm -f "$temporary_file"
 
   echo "Removed managed block from ~/.bashrc."
