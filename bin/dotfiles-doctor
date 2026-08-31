@@ -108,12 +108,12 @@ if [[ -f "$BASHRC" ]]; then
   END_COUNT="$(grep -Fc "$MARKER_END" "$BASHRC" || true)"
 
   if [[ "$BEGIN_COUNT" == "1" && "$END_COUNT" == "1" ]]; then
-    pass "managed ~/.bashrc block is present exactly once"
+    pass "managed $BASHRC block is present exactly once"
   else
-    fail "managed ~/.bashrc markers are inconsistent (begin=$BEGIN_COUNT, end=$END_COUNT)"
+    fail "managed $BASHRC markers are inconsistent (begin=$BEGIN_COUNT, end=$END_COUNT)"
   fi
 else
-  fail "~/.bashrc does not exist"
+  fail "$BASHRC does not exist"
 fi
 
 case ":$PATH:" in
