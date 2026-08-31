@@ -44,6 +44,7 @@ dotfiles/
 │   └── workflows/
 │       └── validate.yml
 ├── bin/
+│   ├── dotfiles-doctor
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   └── git-root
@@ -59,6 +60,7 @@ dotfiles/
 ├── AGENTS.md
 ├── AGENTS.pt-BR.md
 ├── install.sh
+├── uninstall.sh
 ├── LICENSE
 ├── README.md
 └── README.pt-BR.md
@@ -98,14 +100,39 @@ The installer is designed to be idempotent. It:
 
 It deliberately does **not** replace the complete `~/.bashrc` or `~/.gitconfig`, which avoids overwriting configuration added by Codespaces or other tools.
 
-## Manual installation
+## Supported environments
 
-Clone the repository and run:
+| Environment | Status | Notes |
+| --- | --- | --- |
+| GitHub Codespaces + Bash | Primary | Main target for automatic dotfiles installation |
+| Linux + Bash | Supported | Same installation model as Codespaces |
+| WSL + Bash | Expected | Designed to work, but not yet covered by dedicated CI |
+| Zsh / PowerShell | Not configured | This repository currently manages Bash startup only |
+
+## Lifecycle and diagnostics
+
+Install or refresh the managed configuration:
 
 ```bash
 ./install.sh
 source ~/.bashrc
 ```
+
+Check the current environment:
+
+```bash
+dotfiles-doctor
+```
+
+The doctor validates the managed Bash block, PATH, configuration symlinks, Git `include.path`, executable helper links, Bash/Git availability, and reports the detected .NET SDK when available. It returns a non-zero exit code when a managed configuration invariant is broken.
+
+Remove only configuration owned by this repository:
+
+```bash
+./uninstall.sh
+```
+
+The uninstaller removes the managed `~/.bashrc` block, exact Git include entries, and symlinks created by this repository. It deliberately leaves unrelated user files, Git settings, shell configuration, `~/.local/bin`, and non-managed files intact.
 
 ## .NET commands
 

@@ -13,7 +13,7 @@ As mudanças devem permanecer pequenas, reproduzíveis, seguras para reexecuçã
 Leia somente o que for relevante para a tarefa, priorizando:
 
 1. `README.md` e `README.pt-BR.md`;
-2. `install.sh`;
+2. `install.sh` e `uninstall.sh`;
 3. arquivos em `shell/`;
 4. arquivos em `bin/`;
 5. `git/config`;
@@ -28,7 +28,7 @@ Não assuma que uma ferramenta, workflow, serviço, secret ou dependência exist
 - Preferências pessoais de shell e aliases pertencem a `shell/`.
 - Pequenos helpers executáveis pertencem a `bin/`.
 - Padrões pessoais de Git pertencem a `git/config`.
-- Comportamento de instalação e links pertence a `install.sh`.
+- Comportamento de instalação e links pertence a `install.sh`; remoção segura pertence a `uninstall.sh`; diagnóstico do ambiente pertence a `bin/dotfiles-doctor`.
 - Versões de SDK .NET específicas de projetos pertencem ao `global.json` de cada projeto.
 - Ferramentas .NET específicas de projetos pertencem ao `.config/dotnet-tools.json` de cada projeto.
 - Extensões de editor específicas de projetos pertencem ao `.vscode/extensions.json` de cada projeto.
@@ -40,6 +40,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 
 - Prefira a menor alteração capaz de resolver o problema.
 - Preserve a idempotência: executar `install.sh` repetidamente não pode duplicar configuração nem corromper o ambiente.
+- Preserve a reversibilidade: `uninstall.sh` deve remover somente estado gerenciado pelo repositório e manter intactas configurações não relacionadas do usuário.
 - Não substitua o `~/.bashrc` ou o `~/.gitconfig` completos do usuário.
 - Preserve configurações injetadas pelo GitHub Codespaces e por outras ferramentas.
 - Coloque variáveis de shell entre aspas, exceto quando a expansão sem aspas for deliberada e segura.

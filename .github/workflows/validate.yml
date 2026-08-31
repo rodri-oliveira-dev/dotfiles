@@ -22,6 +22,7 @@ jobs:
         shell: bash
         run: |
           bash -n install.sh
+          bash -n uninstall.sh
           bash -n bin/*
           bash -n shell/*.sh
 
@@ -29,5 +30,6 @@ jobs:
         shell: bash
         run: |
           shellcheck install.sh
+          shellcheck uninstall.sh
           shellcheck bin/*
           shellcheck shell/*.sh

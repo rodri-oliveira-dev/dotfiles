@@ -13,7 +13,7 @@ Changes must stay small, reproducible, safe to rerun, and aligned with the repos
 Read only what is relevant to the task, prioritizing:
 
 1. `README.md` and `README.pt-BR.md`;
-2. `install.sh`;
+2. `install.sh` and `uninstall.sh`;
 3. files under `shell/`;
 4. files under `bin/`;
 5. `git/config`;
@@ -28,7 +28,7 @@ Do not assume a tool, workflow, service, secret, or dependency exists unless it 
 - Personal shell preferences and aliases belong in `shell/`.
 - Small executable helpers belong in `bin/`.
 - Personal Git defaults belong in `git/config`.
-- Installation and linking behavior belongs in `install.sh`.
+- Installation and linking behavior belongs in `install.sh`; safe removal belongs in `uninstall.sh`; environment diagnostics belong in `bin/dotfiles-doctor`.
 - Project-specific .NET SDK versions belong in each project's `global.json`.
 - Project-specific .NET tools belong in each project's `.config/dotnet-tools.json`.
 - Project-specific editor extensions belong in each project's `.vscode/extensions.json`.
@@ -40,6 +40,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 
 - Prefer the smallest change that solves the problem.
 - Preserve idempotency: running `install.sh` repeatedly must not duplicate configuration or corrupt the environment.
+- Preserve reversibility: `uninstall.sh` must remove only repository-managed state and leave unrelated user configuration intact.
 - Do not replace the user's complete `~/.bashrc` or `~/.gitconfig`.
 - Preserve settings injected by GitHub Codespaces and other tools.
 - Quote shell variables unless unquoted expansion is deliberate and safe.

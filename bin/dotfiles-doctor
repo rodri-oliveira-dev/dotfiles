@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+
+if [[ -L "$SCRIPT_PATH" ]]; then
+  LINK_TARGET="$(readlink "$SCRIPT_PATH")"
+
+  if [[ "$LINK_TARGET" == /* ]]; then
+    SCRIPT_PATH="$LINK_TARGET"
+  else
+    SCRIPT_PATH="$(dirname "$SCRIPT_PATH")/$LINK_TARGET"
+  fi
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+DOTFILES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_DIR="$XDG_CONFIG_HOME/rodri-dotfiles"
+LOCAL_BIN="$HOME/.local/bin"
+BASHRC="$HOME/.bashrc"
+MARKER_BEGIN="# >>> rodri-dotfiles >>>"
+MARKER_END="# <<< rodri-dotfiles <<<"
+
+FAILURES=0
+WARNINGS=0
+
+pass() {
+  printf '  [OK]   %s\n' "$1"
+}
+
+warn() {
+  printf '  [WARN] %s\n' "$1"
+  WARNINGS=$((WARNINGS + 1))
+}
+
+fail() {
+  printf '  [FAIL] %s\n' "$1"
+  FAILURES=$((FAILURES + 1))
+}
+
+check_symlink() {
+  local label="$1"
+  local link_path="$2"
+  local expected_target="$3"
+  local actual_target
+
+  if [[ ! -L "$link_path" ]]; then
+    fail "$label: expected symlink at $link_path"
+    return
+  fi
+
+  actual_target="$(readlink "$link_path")"
+
+  if [[ "$actual_target" == "$expected_target" ]]; then
+    pass "$label"
+  else
+    fail "$label: points to $actual_target instead of $expected_target"
+  fi
+}
+
+printf 'Dotfiles doctor\n'
+printf '===============\n\n'
+
+printf 'Environment\n'
+printf '-----------\n'
+
+if [[ "${CODESPACES:-false}" == "true" ]]; then
+  pass "GitHub Codespaces detected"
+elif [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+  pass "WSL detected (${WSL_DISTRO_NAME})"
+elif [[ "$(uname -s 2>/dev/null)" == "Linux" ]]; then
+  pass "Linux detected"
+else
+  warn "Environment is outside the primary Linux/Bash/Codespaces support target"
+fi
+
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  pass "Bash ${BASH_VERSION}"
+else
+  fail "Bash is required"
+fi
+
+printf '\nCommands\n'
+printf '--------\n'
+
+if command -v git >/dev/null 2>&1; then
+  pass "git: $(git --version)"
+else
+  fail "git is not available in PATH"
+fi
+
+if command -v dotnet >/dev/null 2>&1; then
+  if DOTNET_VERSION="$(dotnet --version 2>/dev/null)"; then
+    pass ".NET SDK: $DOTNET_VERSION"
+  else
+    warn ".NET CLI is installed but no SDK could be resolved in the current context"
+  fi
+else
+  warn ".NET SDK is not available in PATH"
+fi
+
+printf '\nShell integration\n'
+printf '-----------------\n'
+
+if [[ -f "$BASHRC" ]]; then
+  BEGIN_COUNT="$(grep -Fc "$MARKER_BEGIN" "$BASHRC" || true)"
+  END_COUNT="$(grep -Fc "$MARKER_END" "$BASHRC" || true)"
+
+  if [[ "$BEGIN_COUNT" == "1" && "$END_COUNT" == "1" ]]; then
+    pass "managed ~/.bashrc block is present exactly once"
+  else
+    fail "managed ~/.bashrc markers are inconsistent (begin=$BEGIN_COUNT, end=$END_COUNT)"
+  fi
+else
+  fail "~/.bashrc does not exist"
+fi
+
+case ":$PATH:" in
+  *":$LOCAL_BIN:"*) pass "$LOCAL_BIN is present in PATH" ;;
+  *) fail "$LOCAL_BIN is not present in PATH" ;;
+esac
+
+printf '\nConfiguration links\n'
+printf '-------------------\n'
+
+check_symlink "aliases.sh" "$CONFIG_DIR/aliases.sh" "$DOTFILES_DIR/shell/aliases.sh"
+check_symlink "dotnet.sh" "$CONFIG_DIR/dotnet.sh" "$DOTFILES_DIR/shell/dotnet.sh"
+check_symlink "git.sh" "$CONFIG_DIR/git.sh" "$DOTFILES_DIR/shell/git.sh"
+check_symlink "gitconfig" "$CONFIG_DIR/gitconfig" "$DOTFILES_DIR/git/config"
+
+printf '\nGit integration\n'
+printf '---------------\n'
+
+if command -v git >/dev/null 2>&1; then
+  STABLE_GIT_CONFIG_FILE="$CONFIG_DIR/gitconfig"
+
+  if git config --global --get-all include.path 2>/dev/null | grep -Fxq "$STABLE_GIT_CONFIG_FILE"; then
+    pass "Git include.path references the stable dotfiles gitconfig"
+  else
+    fail "Git include.path does not reference $STABLE_GIT_CONFIG_FILE"
+  fi
+fi
+
+printf '\nExecutable helpers\n'
+printf '------------------\n'
+
+for script in "$DOTFILES_DIR"/bin/*; do
+  [[ -f "$script" ]] || continue
+  check_symlink "$(basename "$script")" "$LOCAL_BIN/$(basename "$script")" "$script"
+done
+
+printf '\nSummary\n'
+printf '-------\n'
+printf 'Failures: %d\n' "$FAILURES"
+printf 'Warnings: %d\n' "$WARNINGS"
+
+if ((FAILURES > 0)); then
+  exit 1
+fi
+
+exit 0

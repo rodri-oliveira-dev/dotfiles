@@ -44,6 +44,7 @@ dotfiles/
 │   └── workflows/
 │       └── validate.yml
 ├── bin/
+│   ├── dotfiles-doctor
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   └── git-root
@@ -59,6 +60,7 @@ dotfiles/
 ├── AGENTS.md
 ├── AGENTS.pt-BR.md
 ├── install.sh
+├── uninstall.sh
 ├── LICENSE
 ├── README.md
 └── README.pt-BR.md
@@ -98,14 +100,39 @@ O instalador foi projetado para ser idempotente. Ele:
 
 Ele deliberadamente **não** substitui o `~/.bashrc` ou o `~/.gitconfig` completos, evitando sobrescrever configurações criadas pelo Codespaces ou por outras ferramentas.
 
-## Instalação manual
+## Ambientes suportados
 
-Clone o repositório e execute:
+| Ambiente | Status | Observações |
+| --- | --- | --- |
+| GitHub Codespaces + Bash | Principal | Alvo principal para instalação automática dos dotfiles |
+| Linux + Bash | Suportado | Mesmo modelo de instalação utilizado no Codespaces |
+| WSL + Bash | Esperado | Projetado para funcionar, mas ainda sem CI dedicado |
+| Zsh / PowerShell | Não configurado | Atualmente o repositório gerencia apenas inicialização Bash |
+
+## Ciclo de vida e diagnóstico
+
+Instale ou atualize a configuração gerenciada:
 
 ```bash
 ./install.sh
 source ~/.bashrc
 ```
+
+Verifique o ambiente atual:
+
+```bash
+dotfiles-doctor
+```
+
+O doctor valida o bloco Bash gerenciado, PATH, links de configuração, `include.path` do Git, links dos helpers executáveis, disponibilidade de Bash/Git e informa o SDK .NET detectado quando disponível. Ele retorna código diferente de zero quando uma invariável da configuração gerenciada está quebrada.
+
+Remova apenas a configuração pertencente a este repositório:
+
+```bash
+./uninstall.sh
+```
+
+O desinstalador remove o bloco gerenciado do `~/.bashrc`, as entradas Git exatas e os links simbólicos criados pelo repositório. Arquivos do usuário, configurações Git não relacionadas, outras configurações de shell, `~/.local/bin` e arquivos não gerenciados permanecem intactos.
 
 ## Comandos .NET
 

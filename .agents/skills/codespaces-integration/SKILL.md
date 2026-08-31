@@ -25,6 +25,7 @@ Project requirements belong in files such as:
 
 - Changes to automatic dotfiles installation.
 - Changes to `install.sh` that affect Codespaces startup.
+- Changes to `uninstall.sh` or `dotfiles-doctor` that affect the managed Codespaces lifecycle.
 - PATH initialization.
 - Bash startup-file integration.
 - Git configuration integration in Codespaces.
@@ -60,6 +61,8 @@ Repeated installation must not:
 - duplicate `~/.local/bin` in PATH;
 - create conflicting copies of managed helper scripts;
 - overwrite unrelated Git or shell configuration.
+
+Uninstallation must remove only state that can be proven to be managed by this repository and must leave unrelated user configuration unchanged.
 
 # Validation
 

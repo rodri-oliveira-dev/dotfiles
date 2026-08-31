@@ -13,7 +13,8 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 - Changes under `shell/`.
 - Changes under `bin/`.
 - Changes to `git/config`.
-- General changes to `install.sh`.
+- General changes to `install.sh` or `uninstall.sh`.
+- Changes to `bin/dotfiles-doctor`.
 - Changes to `.editorconfig`, `.gitattributes`, or `.gitignore`.
 - Documentation updates that describe repository commands or behavior.
 
@@ -58,6 +59,7 @@ For documentation-only changes, verify links, paths, command names, and reposito
 - Do not ignore `bin/`; it is source code here.
 - Do not introduce MSBuild or NuGet infrastructure without an explicit repository requirement.
 - Do not overwrite complete user configuration files for convenience.
+- Uninstall logic must remove only exact repository-managed markers, Git includes, and symlinks; leave unrelated state untouched.
 
 # Quality criteria
 
