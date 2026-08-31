@@ -27,6 +27,6 @@ git-recent-branches() {
   git for-each-ref \
     --sort=-committerdate \
     --format='%(committerdate:short) %(refname:short)' \
-    refs/heads/ \
-    | head -n "${1:-10}"
+    refs/heads/ |
+    head -n "${1:-10}"
 }
