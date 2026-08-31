@@ -117,8 +117,8 @@ else
 fi
 
 case ":$PATH:" in
-  *":$LOCAL_BIN:"*) pass "$LOCAL_BIN is present in PATH" ;;
-  *) fail "$LOCAL_BIN is not present in PATH" ;;
+*":$LOCAL_BIN:"*) pass "$LOCAL_BIN is present in PATH" ;;
+*) fail "$LOCAL_BIN is not present in PATH" ;;
 esac
 
 printf '\nConfiguration links\n'
