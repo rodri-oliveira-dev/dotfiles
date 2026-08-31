@@ -1,5 +1,21 @@
-.DS_Store
-Thumbs.db
-*.log
+# IDEs and local workspace state
+.vs/
 .vscode/
 .idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+~$*
+*~
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
