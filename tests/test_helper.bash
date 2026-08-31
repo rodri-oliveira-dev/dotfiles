@@ -51,8 +51,9 @@ create_git_project() {
   export PROJECT_ROOT
 }
 
-assert_output_contains() {
-  local expected="$1"
+assert_contains() {
+  local haystack="$1"
+  local expected="$2"
 
-  [[ "$output" == *"$expected"* ]]
+  [[ "$haystack" == *"$expected"* ]]
 }
