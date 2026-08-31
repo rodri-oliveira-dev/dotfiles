@@ -65,6 +65,17 @@ Bats tests must continue to prove that multiple installations do not duplicate t
 - Do not replace complete user-owned configuration files.
 - Do not broaden permissions or use `sudo` without a concrete requirement.
 
+# CI expectations
+
+When shell validation changes, preserve:
+
+- Bash syntax validation before behavioral tests;
+- ShellCheck and shfmt as static gates;
+- Bats as the behavioral gate;
+- a bounded workflow timeout;
+- cancellation of stale runs for the same ref;
+- full-SHA pinning for third-party actions.
+
 # Quality criteria
 
 A good hardening change reduces a specific failure mode, keeps the script understandable, remains idempotent, and passes syntax plus ShellCheck validation.

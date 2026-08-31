@@ -85,6 +85,10 @@ Lifecycle behavior must be covered with a disposable HOME in Bats, including rep
 - Do not overwrite complete `~/.bashrc` or `~/.gitconfig`.
 - Do not treat VS Code project-extension recommendations as a dotfiles responsibility.
 
+# CI boundary
+
+Changes that only affect documentation should not consume a validation runner. Changes to installation, shell helpers, tests, formatting conventions, or workflow/dependency-maintenance configuration should continue to trigger validation.
+
 # Quality criteria
 
 A good Codespaces change starts cleanly, remains safe when rerun, preserves platform-managed configuration, exposes only developer-level helpers, and keeps project-specific requirements in the project repository.

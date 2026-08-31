@@ -20,7 +20,8 @@ Leia somente o que for relevante para a tarefa, priorizando:
 6. `.editorconfig`, `.gitattributes` e `.gitignore`;
 7. testes em `tests/`;
 8. workflows que realmente existem em `.github/workflows/`;
-9. `.agents/skills/` para tarefas especializadas.
+9. `.github/dependabot.yml` para manutenção automatizada das dependências do GitHub Actions;
+10. `.agents/skills/` para tarefas especializadas.
 
 Não assuma que uma ferramenta, workflow, serviço, secret ou dependência existe sem que esteja presente no repositório ou seja fornecida explicitamente pelo ambiente.
 
@@ -51,6 +52,9 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Mantenha `bin/` versionado; neste repositório ele é código-fonte, não saída de build.
 - Mantenha a documentação alinhada ao comportamento quando comandos, helpers, instalação ou convenções suportadas mudarem.
 - Não reduza validações apenas para fazer uma mudança passar.
+- Mantenha permissões do GitHub Actions mínimas e somente leitura, salvo quando uma capacidade de escrita for explicitamente necessária.
+- Fixe GitHub Actions de terceiros por commit SHA completo; use Dependabot para manter esses pins.
+- Preserve filtros de paths, cancelamento por concurrency e timeouts limitados, salvo quando existir requisito concreto para alterá-los.
 
 ## Validação obrigatória
 

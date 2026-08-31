@@ -4,7 +4,31 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "install.sh"
+      - "uninstall.sh"
+      - "bin/**"
+      - "shell/**"
+      - "tests/**"
+      - ".editorconfig"
+      - ".gitattributes"
+      - ".github/workflows/validate.yml"
+      - ".github/dependabot.yml"
   pull_request:
+    paths:
+      - "install.sh"
+      - "uninstall.sh"
+      - "bin/**"
+      - "shell/**"
+      - "tests/**"
+      - ".editorconfig"
+      - ".gitattributes"
+      - ".github/workflows/validate.yml"
+      - ".github/dependabot.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -13,10 +37,13 @@ jobs:
   shell:
     name: Shell validation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Install test and formatting tools
         shell: bash

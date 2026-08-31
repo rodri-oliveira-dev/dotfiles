@@ -18,6 +18,7 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 - Changes to `.editorconfig`, `.gitattributes`, or `.gitignore`.
 - Documentation updates that describe repository commands or behavior.
 - Behavioral tests under `tests/`.
+- Repository-level CI configuration when it directly supports dotfiles validation.
 
 # When not to use
 
@@ -58,6 +59,7 @@ For documentation-only changes, verify links, paths, command names, and reposito
 - Do not introduce MSBuild or NuGet infrastructure without an explicit repository requirement.
 - Do not overwrite complete user configuration files for convenience.
 - Uninstall logic must remove only exact repository-managed markers, Git includes, and symlinks; leave unrelated state untouched.
+- CI changes must preserve minimal permissions, bounded runtime, action SHA pinning, and dependency-update automation unless there is a documented reason not to.
 
 # Quality criteria
 

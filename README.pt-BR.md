@@ -41,6 +41,7 @@ dotfiles/
 │       └── shell-hardening/
 │           └── SKILL.md
 ├── .github/
+│   ├── dependabot.yml
 │   └── workflows/
 │       └── validate.yml
 ├── bin/
@@ -296,11 +297,25 @@ bats tests
 
 Bats e shfmt são dependências somente de desenvolvimento/CI; o `install.sh` não os instala no ambiente pessoal.
 
-Workflow:
+### Hardening do CI
+
+O workflow de validação é deliberadamente restrito e endurecido:
+
+- executa somente quando entradas que afetam shell/runtime são alteradas, evitando uso de runner em mudanças apenas documentais;
+- concurrency cancela execuções antigas da mesma ref quando chega um commit mais novo;
+- o job de validação possui timeout de cinco minutos;
+- as permissões do repositório são somente leitura;
+- `actions/checkout` fica fixado em um commit SHA completo e não persiste credenciais;
+- o Dependabot verifica semanalmente dependências do GitHub Actions e agrupa atualizações disponíveis em um único pull request.
+
+Arquivos:
 
 ```text
 .github/workflows/validate.yml
+.github/dependabot.yml
 ```
+
+Se esse workflow passar a ser um status check obrigatório no futuro, revise os filtros de paths antes de depender dele em pull requests somente de documentação.
 
 ## Segurança
 
