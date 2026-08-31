@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Repository"
+echo "----------"
+git rev-parse --show-toplevel 2>/dev/null || pwd
+
+echo
+echo ".NET"
+echo "----"
+
+if command -v dotnet >/dev/null 2>&1; then
+  echo "SDK: $(dotnet --version)"
+else
+  echo ".NET SDK not found"
+fi
+
+if [[ -f global.json ]]; then
+  echo "global.json: yes"
+else
+  echo "global.json: no"
+fi
+
+if [[ -f Directory.Build.props ]]; then
+  echo "Directory.Build.props: yes"
+else
+  echo "Directory.Build.props: no"
+fi
+
+if [[ -f Directory.Packages.props ]]; then
+  echo "Central Package Management: yes"
+else
+  echo "Central Package Management: no"
+fi
+
+if [[ -f .config/dotnet-tools.json ]]; then
+  echo "Local tool manifest: yes"
+else
+  echo "Local tool manifest: no"
+fi
+
+echo
+echo "Solutions"
+echo "---------"
+find . -maxdepth 1 \( -name "*.sln" -o -name "*.slnx" \) -print
