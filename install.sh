@@ -2,7 +2,8 @@
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="$HOME/.config/rodri-dotfiles"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_DIR="$XDG_CONFIG_HOME/rodri-dotfiles"
 LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 MARKER_BEGIN="# >>> rodri-dotfiles >>>"
@@ -14,6 +15,7 @@ mkdir -p "$CONFIG_DIR" "$LOCAL_BIN"
 ln -sfn "$DOTFILES_DIR/shell/aliases.sh" "$CONFIG_DIR/aliases.sh"
 ln -sfn "$DOTFILES_DIR/shell/dotnet.sh" "$CONFIG_DIR/dotnet.sh"
 ln -sfn "$DOTFILES_DIR/shell/git.sh" "$CONFIG_DIR/git.sh"
+ln -sfn "$DOTFILES_DIR/git/config" "$CONFIG_DIR/gitconfig"
 
 touch "$BASHRC"
 
@@ -21,22 +23,38 @@ if ! grep -Fq "$MARKER_BEGIN" "$BASHRC"; then
   cat >> "$BASHRC" <<'EOF'
 
 # >>> rodri-dotfiles >>>
-source "$HOME/.config/rodri-dotfiles/aliases.sh"
-source "$HOME/.config/rodri-dotfiles/dotnet.sh"
-source "$HOME/.config/rodri-dotfiles/git.sh"
+DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles"
+
+if [[ -r "$DOTFILES_CONFIG_DIR/aliases.sh" ]]; then
+  source "$DOTFILES_CONFIG_DIR/aliases.sh"
+fi
+
+if [[ -r "$DOTFILES_CONFIG_DIR/dotnet.sh" ]]; then
+  source "$DOTFILES_CONFIG_DIR/dotnet.sh"
+fi
+
+if [[ -r "$DOTFILES_CONFIG_DIR/git.sh" ]]; then
+  source "$DOTFILES_CONFIG_DIR/git.sh"
+fi
 
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
   *) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
+
+unset DOTFILES_CONFIG_DIR
 # <<< rodri-dotfiles <<<
 EOF
 fi
 
-GIT_CONFIG_FILE="$DOTFILES_DIR/git/config"
+LEGACY_GIT_CONFIG_FILE="$DOTFILES_DIR/git/config"
+STABLE_GIT_CONFIG_FILE="$CONFIG_DIR/gitconfig"
 
-if ! git config --global --get-all include.path 2>/dev/null | grep -Fxq "$GIT_CONFIG_FILE"; then
-  git config --global --add include.path "$GIT_CONFIG_FILE"
+# Migrate the original repository-relative include path, without touching unrelated includes.
+git config --global --fixed-value --unset-all include.path "$LEGACY_GIT_CONFIG_FILE" 2>/dev/null || true
+
+if ! git config --global --get-all include.path 2>/dev/null | grep -Fxq "$STABLE_GIT_CONFIG_FILE"; then
+  git config --global --add include.path "$STABLE_GIT_CONFIG_FILE"
 fi
 
 for script in "$DOTFILES_DIR"/bin/*; do

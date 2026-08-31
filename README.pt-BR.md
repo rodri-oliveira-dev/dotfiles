@@ -90,10 +90,10 @@ Ao criar um novo Codespace, o GitHub pode clonar este repositório e executar o 
 
 O instalador foi projetado para ser idempotente. Ele:
 
-- cria os diretórios locais necessários;
-- cria links para os arquivos auxiliares de shell;
-- adiciona o bloco dos dotfiles ao `~/.bashrc` apenas uma vez;
-- adiciona a configuração Git deste repositório por meio de `include.path`;
+- usa `${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles` como localização estável de configuração;
+- cria links para os helpers de shell e para a configuração Git nessa localização;
+- adiciona o bloco dos dotfiles ao `~/.bashrc` apenas uma vez e carrega os fragmentos somente quando estão legíveis;
+- migra o `include.path` Git original, relativo ao repositório, para a localização estável;
 - disponibiliza os scripts de `bin/` por meio de `~/.local/bin`.
 
 Ele deliberadamente **não** substitui o `~/.bashrc` ou o `~/.gitconfig` completos, evitando sobrescrever configurações criadas pelo Codespaces ou por outras ferramentas.
@@ -116,7 +116,7 @@ source ~/.bashrc
 | `dr` | `dotnet restore` |
 | `db` | `dotnet build` |
 | `dt` | `dotnet test` |
-| `df` | `dotnet format` |
+| `dnfmt` | `dotnet format` |
 | `dp` | `dotnet pack` |
 | `dc` | `dotnet clean` |
 | `dtr` | `dotnet tool restore` |
@@ -127,19 +127,20 @@ source ~/.bashrc
 
 ### `dotnet-bootstrap`
 
-Prepara um repositório .NET para desenvolvimento.
+Prepara um repositório .NET para desenvolvimento a partir de qualquer diretório dentro do worktree Git.
 
-Se existir `.config/dotnet-tools.json`, restaura primeiro as ferramentas locais e depois os pacotes NuGet.
+Se existir `.config/dotnet-tools.json` na raiz, restaura primeiro as ferramentas locais. Quando existe exatamente um `.sln` ou `.slnx` na raiz, essa solução é restaurada automaticamente. Se houver várias soluções, o helper interrompe a execução e exige um alvo explícito em vez de escolher uma arbitrariamente.
 
 ```bash
 dotnet-bootstrap
+dotnet-bootstrap Ocelot.slnx
 ```
 
-Argumentos adicionais são encaminhados para `dotnet restore`.
+Opções adicionais de restore podem ser informadas depois do alvo. Quando existe apenas uma solução, as opções podem ser passadas diretamente.
 
 ### `dotnet-context`
 
-Exibe o SDK efetivo e detecta convenções comuns do repositório:
+Exibe o SDK efetivo e detecta convenções comuns a partir da raiz do repositório Git, mesmo quando executado em um subdiretório:
 
 - `global.json`;
 - `Directory.Build.props`;
@@ -169,7 +170,7 @@ dotnet-tools
 
 ### `dotnet-solutions`
 
-Lista arquivos `.sln` e `.slnx` existentes na raiz sem selecionar um deles automaticamente.
+Lista arquivos `.sln` e `.slnx` existentes na raiz do repositório Git sem selecionar um deles automaticamente.
 
 ```bash
 dotnet-solutions

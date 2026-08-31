@@ -9,20 +9,80 @@ if ! command -v dotnet >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ -f global.json ]]; then
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if [[ -f "$ROOT/global.json" ]]; then
+  if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version)"; then
+    echo "Error: no compatible .NET SDK could be resolved for $ROOT/global.json." >&2
+    exit 1
+  fi
+
   echo "Resolved SDK:"
-  dotnet --version
+  printf '%s\n' "$SDK_VERSION"
   echo
 fi
 
-if [[ -f .config/dotnet-tools.json ]]; then
+if [[ -f "$ROOT/.config/dotnet-tools.json" ]]; then
   echo "Restoring local .NET tools..."
-  dotnet tool restore
+  (cd "$ROOT" && dotnet tool restore)
   echo
 fi
+
+shopt -s nullglob
+SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
+shopt -u nullglob
+
+print_solution_choices() {
+  echo "Multiple solution files were found in the repository root:" >&2
+
+  local solution
+  for solution in "${SOLUTIONS[@]}"; do
+    printf '  - %s\n' "${solution#"$ROOT"/}" >&2
+  done
+
+  echo >&2
+  echo "Specify the target explicitly, for example:" >&2
+  echo "  dotnet-bootstrap ${SOLUTIONS[0]#"$ROOT"/}" >&2
+}
 
 echo "Restoring NuGet packages..."
-dotnet restore "$@"
+
+if (($# == 0)); then
+  case "${#SOLUTIONS[@]}" in
+    0)
+      (cd "$ROOT" && dotnet restore)
+      ;;
+    1)
+      dotnet restore "${SOLUTIONS[0]}"
+      ;;
+    *)
+      print_solution_choices
+      exit 2
+      ;;
+  esac
+elif [[ "$1" == -* ]]; then
+  case "${#SOLUTIONS[@]}" in
+    0)
+      (cd "$ROOT" && dotnet restore "$@")
+      ;;
+    1)
+      dotnet restore "${SOLUTIONS[0]}" "$@"
+      ;;
+    *)
+      print_solution_choices
+      exit 2
+      ;;
+  esac
+else
+  EXPLICIT_TARGET="$1"
+  shift
+
+  if [[ "$EXPLICIT_TARGET" != /* && -e "$ROOT/$EXPLICIT_TARGET" ]]; then
+    EXPLICIT_TARGET="$ROOT/$EXPLICIT_TARGET"
+  fi
+
+  dotnet restore "$EXPLICIT_TARGET" "$@"
+fi
 
 echo
 echo "Repository ready."

@@ -1,39 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
 echo "Repository"
 echo "----------"
-git rev-parse --show-toplevel 2>/dev/null || pwd
+printf '%s\n' "$ROOT"
 
 echo
 echo ".NET"
 echo "----"
 
 if command -v dotnet >/dev/null 2>&1; then
-  echo "SDK: $(dotnet --version)"
+  if SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+    printf 'SDK: %s\n' "$SDK_VERSION"
+  else
+    echo "SDK: installed, but no compatible SDK could be resolved for this repository"
+  fi
 else
   echo ".NET SDK not found"
 fi
 
-if [[ -f global.json ]]; then
+if [[ -f "$ROOT/global.json" ]]; then
   echo "global.json: yes"
 else
   echo "global.json: no"
 fi
 
-if [[ -f Directory.Build.props ]]; then
+if [[ -f "$ROOT/Directory.Build.props" ]]; then
   echo "Directory.Build.props: yes"
 else
   echo "Directory.Build.props: no"
 fi
 
-if [[ -f Directory.Packages.props ]]; then
+if [[ -f "$ROOT/Directory.Packages.props" ]]; then
   echo "Central Package Management: yes"
 else
   echo "Central Package Management: no"
 fi
 
-if [[ -f .config/dotnet-tools.json ]]; then
+if [[ -f "$ROOT/.config/dotnet-tools.json" ]]; then
   echo "Local tool manifest: yes"
 else
   echo "Local tool manifest: no"
@@ -42,4 +48,15 @@ fi
 echo
 echo "Solutions"
 echo "---------"
-find . -maxdepth 1 \( -name "*.sln" -o -name "*.slnx" \) -print
+
+shopt -s nullglob
+SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
+shopt -u nullglob
+
+if (("${#SOLUTIONS[@]}" == 0)); then
+  echo "(none)"
+else
+  for solution in "${SOLUTIONS[@]}"; do
+    printf '%s\n' "${solution#"$ROOT"/}"
+  done
+fi

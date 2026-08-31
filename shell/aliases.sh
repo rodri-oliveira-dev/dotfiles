@@ -17,7 +17,7 @@ alias gl='git log --graph --decorate --oneline --all'
 alias dr='dotnet restore'
 alias db='dotnet build'
 alias dt='dotnet test'
-alias df='dotnet format'
+alias dnfmt='dotnet format'
 alias dp='dotnet pack'
 alias dc='dotnet clean'
 

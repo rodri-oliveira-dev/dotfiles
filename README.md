@@ -90,10 +90,10 @@ When a new Codespace is created, GitHub can clone this repository and execute `i
 
 The installer is designed to be idempotent. It:
 
-- creates the required local configuration directories;
-- links the shell helper files;
-- adds the dotfiles block to `~/.bashrc` only once;
-- adds this repository's Git configuration through `include.path`;
+- uses `${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles` as the stable configuration location;
+- links the shell helpers and Git configuration into that location;
+- adds the dotfiles block to `~/.bashrc` only once and sources fragments only when readable;
+- migrates the original repository-relative Git `include.path` to the stable configuration path;
 - exposes scripts from `bin/` through `~/.local/bin`.
 
 It deliberately does **not** replace the complete `~/.bashrc` or `~/.gitconfig`, which avoids overwriting configuration added by Codespaces or other tools.
@@ -116,7 +116,7 @@ source ~/.bashrc
 | `dr` | `dotnet restore` |
 | `db` | `dotnet build` |
 | `dt` | `dotnet test` |
-| `df` | `dotnet format` |
+| `dnfmt` | `dotnet format` |
 | `dp` | `dotnet pack` |
 | `dc` | `dotnet clean` |
 | `dtr` | `dotnet tool restore` |
@@ -127,19 +127,20 @@ source ~/.bashrc
 
 ### `dotnet-bootstrap`
 
-Bootstraps a .NET repository.
+Bootstraps a .NET repository from any directory inside the Git worktree.
 
-If `.config/dotnet-tools.json` exists, it restores local tools first and then restores NuGet packages.
+If `.config/dotnet-tools.json` exists at the repository root, it restores local tools first. With exactly one root-level `.sln` or `.slnx`, that solution is restored automatically. If multiple solutions exist, the helper stops and requires an explicit target instead of choosing one arbitrarily.
 
 ```bash
 dotnet-bootstrap
+dotnet-bootstrap Ocelot.slnx
 ```
 
-Additional arguments are forwarded to `dotnet restore`.
+Additional restore options can be passed after the target. When there is only one solution, options may be passed directly.
 
 ### `dotnet-context`
 
-Displays the effective SDK and detects common repository conventions:
+Displays the effective SDK and detects common repository conventions from the Git repository root, even when invoked from a nested directory:
 
 - `global.json`;
 - `Directory.Build.props`;
@@ -169,7 +170,7 @@ dotnet-tools
 
 ### `dotnet-solutions`
 
-Lists `.sln` and `.slnx` files in the repository root without selecting one automatically.
+Lists `.sln` and `.slnx` files from the Git repository root without selecting one automatically.
 
 ```bash
 dotnet-solutions
