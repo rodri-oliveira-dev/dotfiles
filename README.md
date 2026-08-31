@@ -54,6 +54,10 @@ dotfiles/
 │   ├── aliases.sh
 │   ├── dotnet.sh
 │   └── git.sh
+├── tests/
+│   ├── dotnet-helpers.bats
+│   ├── lifecycle.bats
+│   └── test_helper.bash
 ├── .editorconfig
 ├── .gitattributes
 ├── .gitignore
@@ -269,12 +273,28 @@ Project-specific extension recommendations belong in `.vscode/extensions.json`.
 
 Personal editor preferences should be synchronized through VS Code Settings Sync rather than installed by `install.sh`.
 
-## Validation
+## Validation and automated tests
 
-The repository includes a GitHub Actions workflow that validates:
+The repository validates both static quality and observable behavior.
+
+Static validation:
 
 - Bash syntax with `bash -n`;
-- shell scripts with ShellCheck.
+- shell analysis with ShellCheck;
+- deterministic shell formatting with `shfmt -d -i 2`.
+
+Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include management, doctor/uninstall behavior, repository-root discovery, local .NET tool restore, and single/multiple solution handling.
+
+Run locally after installing `bats` and `shfmt`:
+
+```bash
+bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bats tests
+```
+
+Bats and shfmt are development/CI dependencies only; `install.sh` does not install them into the personal environment.
 
 Workflow:
 

@@ -4,6 +4,7 @@
 # Shell and repository configuration use LF explicitly.
 *.sh             text eol=lf
 *.bash           text eol=lf
+*.bats           text eol=lf
 *.json           text eol=lf
 *.yaml           text eol=lf
 *.yml            text eol=lf

@@ -31,6 +31,7 @@ Inspect changes for:
 - PATH duplication;
 - malformed heredocs;
 - commands that depend on tools not guaranteed by the environment;
+- formatting drift detectable by `shfmt`;
 - ShellCheck warnings that indicate real correctness or maintainability issues.
 
 # Process
@@ -47,16 +48,13 @@ Inspect changes for:
 # Validation
 
 ```bash
-bash -n install.sh
-bash -n bin/*
-bash -n shell/*.sh
-
-shellcheck install.sh
-shellcheck bin/*
-shellcheck shell/*.sh
+bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bats tests
 ```
 
-For `install.sh`, also verify that multiple runs do not duplicate the managed Bash block, Git includes, or PATH entries.
+Bats tests must continue to prove that multiple installations do not duplicate the managed Bash block, Git includes, or PATH entries, and that uninstall preserves unrelated state.
 
 # Restrictions
 

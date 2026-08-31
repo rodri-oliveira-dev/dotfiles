@@ -18,6 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Install test and formatting tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bats shfmt
+
       - name: Validate Bash syntax
         shell: bash
         run: |
@@ -25,6 +31,7 @@ jobs:
           bash -n uninstall.sh
           bash -n bin/*
           bash -n shell/*.sh
+          bash -n tests/test_helper.bash
 
       - name: Run ShellCheck
         shell: bash
@@ -33,3 +40,13 @@ jobs:
           shellcheck uninstall.sh
           shellcheck bin/*
           shellcheck shell/*.sh
+          shellcheck tests/test_helper.bash
+
+      - name: Check shell formatting
+        shell: bash
+        run: |
+          shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+
+      - name: Run Bats tests
+        shell: bash
+        run: bats tests

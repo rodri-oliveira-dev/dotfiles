@@ -18,8 +18,9 @@ Leia somente o que for relevante para a tarefa, priorizando:
 4. arquivos em `bin/`;
 5. `git/config`;
 6. `.editorconfig`, `.gitattributes` e `.gitignore`;
-7. workflows que realmente existem em `.github/workflows/`;
-8. `.agents/skills/` para tarefas especializadas.
+7. testes em `tests/`;
+8. workflows que realmente existem em `.github/workflows/`;
+9. `.agents/skills/` para tarefas especializadas.
 
 Não assuma que uma ferramenta, workflow, serviço, secret ou dependência existe sem que esteja presente no repositório ou seja fornecida explicitamente pelo ambiente.
 
@@ -56,16 +57,13 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 Para mudanças em scripts de shell, execute a partir da raiz quando o ambiente permitir:
 
 ```bash
-bash -n install.sh
-bash -n bin/*
-bash -n shell/*.sh
-
-shellcheck install.sh
-shellcheck bin/*
-shellcheck shell/*.sh
+bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bats tests
 ```
 
-Para mudanças em `install.sh`, valide também a idempotência em um ambiente isolado ou descartável quando possível, executando o instalador mais de uma vez e confirmando que:
+Os testes Bats são a baseline executável para comportamento de lifecycle e helpers .NET. Para mudanças em `install.sh`, mantenha a cobertura de idempotência provando que:
 
 - o bloco gerenciado não é duplicado em `~/.bashrc`;
 - o `include.path` do Git não é duplicado;

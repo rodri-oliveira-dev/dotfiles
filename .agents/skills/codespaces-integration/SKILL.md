@@ -69,16 +69,13 @@ Uninstallation must remove only state that can be proven to be managed by this r
 Run:
 
 ```bash
-bash -n install.sh
-bash -n bin/*
-bash -n shell/*.sh
-
-shellcheck install.sh
-shellcheck bin/*
-shellcheck shell/*.sh
+bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bats tests
 ```
 
-When possible, execute `install.sh` twice in a disposable HOME and compare the resulting shell and Git configuration.
+Lifecycle behavior must be covered with a disposable HOME in Bats, including repeated installation, doctor validation, Git include management, and conservative uninstall behavior.
 
 # Restrictions
 

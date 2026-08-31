@@ -17,6 +17,7 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 - Changes to `bin/dotfiles-doctor`.
 - Changes to `.editorconfig`, `.gitattributes`, or `.gitignore`.
 - Documentation updates that describe repository commands or behavior.
+- Behavioral tests under `tests/`.
 
 # When not to use
 
@@ -40,13 +41,10 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 For shell-related changes:
 
 ```bash
-bash -n install.sh
-bash -n bin/*
-bash -n shell/*.sh
-
-shellcheck install.sh
-shellcheck bin/*
-shellcheck shell/*.sh
+bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bats tests
 ```
 
 For documentation-only changes, verify links, paths, command names, and repository structure against the actual tree.
