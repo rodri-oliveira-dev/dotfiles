@@ -12,10 +12,12 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 
 - Changes under `shell/`.
 - Changes under `bin/`.
+- Changes to repository-local hooks under `.githooks/`.
+- Changes to shared validation under `scripts/`.
 - Changes to `git/config`.
 - General changes to `install.sh` or `uninstall.sh`.
-- Changes to `bin/dotfiles-doctor`.
-- Changes to `.editorconfig`, `.gitattributes`, or `.gitignore`.
+- Changes to `bin/dotfiles-doctor` or lifecycle helpers such as `bin/dotfiles-update`.
+- Changes to `.editorconfig`, `.gitattributes`, `.gitignore`, `.dockerignore`, or `Dockerfile.test`.
 - Documentation updates that describe repository commands or behavior.
 - Behavioral tests under `tests/`.
 - Repository-level CI configuration when it directly supports dotfiles validation.
@@ -35,18 +37,19 @@ Guide small and safe changes to the dotfiles repository while preserving reprodu
 5. Preserve backward compatibility of existing aliases and helpers unless a breaking change is explicitly requested.
 6. Update both README language versions when user-facing behavior changes.
 7. Review the diff for accidental environment coupling.
-8. Run the relevant shell validation.
+8. Run the relevant shell, Bats, and container validation when the environment allows.
 
 # Validation
 
 For shell-related changes:
 
 ```bash
-bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bash scripts/validate-shell
 bats tests
+docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```
+
+The shared shell validator is authoritative for syntax, ShellCheck, and shfmt. Repository pre-commit may allow missing optional local tools, but CI must enforce the complete validator.
 
 For documentation-only changes, verify links, paths, command names, and repository structure against the actual tree.
 
@@ -58,7 +61,9 @@ For documentation-only changes, verify links, paths, command names, and reposito
 - Do not ignore `bin/`; it is source code here.
 - Do not introduce MSBuild or NuGet infrastructure without an explicit repository requirement.
 - Do not overwrite complete user configuration files for convenience.
-- Uninstall logic must remove only exact repository-managed markers, Git includes, and symlinks; leave unrelated state untouched.
+- Uninstall logic must remove only exact repository-managed markers, Git includes, repository-local hook configuration, and symlinks; leave unrelated state untouched.
+- Do not set a global `core.hooksPath`; hooks managed here apply only to this repository.
+- Update helpers must not automatically reset, stash, or discard local work.
 - CI changes must preserve minimal permissions, bounded runtime, action SHA pinning, and dependency-update automation unless there is a documented reason not to.
 
 # Quality criteria
