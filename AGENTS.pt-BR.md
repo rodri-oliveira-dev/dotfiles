@@ -16,12 +16,13 @@ Leia somente o que for relevante para a tarefa, priorizando:
 2. `install.sh` e `uninstall.sh`;
 3. arquivos em `shell/`;
 4. arquivos em `bin/`;
-5. `git/config`;
-6. `.editorconfig`, `.gitattributes` e `.gitignore`;
-7. testes em `tests/`;
-8. workflows que realmente existem em `.github/workflows/`;
-9. `.github/dependabot.yml` para manutenção automatizada das dependências do GitHub Actions;
-10. `.agents/skills/` para tarefas especializadas.
+5. hooks locais em `.githooks/` e validação compartilhada em `scripts/`;
+6. `git/config`;
+7. `.editorconfig`, `.gitattributes`, `.gitignore`, `.dockerignore` e `Dockerfile.test`;
+8. testes em `tests/`;
+9. workflows que realmente existem em `.github/workflows/`;
+10. `.github/dependabot.yml` para manutenção automatizada das dependências do GitHub Actions;
+11. `.agents/skills/` para tarefas especializadas.
 
 Não assuma que uma ferramenta, workflow, serviço, secret ou dependência existe sem que esteja presente no repositório ou seja fornecida explicitamente pelo ambiente.
 
@@ -29,6 +30,8 @@ Não assuma que uma ferramenta, workflow, serviço, secret ou dependência exist
 
 - Preferências pessoais de shell e aliases pertencem a `shell/`.
 - Pequenos helpers executáveis pertencem a `bin/`.
+- Hooks Git locais deste repositório pertencem a `.githooks/`; eles não devem sobrescrever hooks de repositórios não relacionados.
+- Pontos de entrada compartilhados para validação do repositório pertencem a `scripts/`.
 - Padrões pessoais de Git pertencem a `git/config`.
 - Comportamento de instalação e links pertence a `install.sh`; remoção segura pertence a `uninstall.sh`; diagnóstico do ambiente pertence a `bin/dotfiles-doctor`.
 - Versões de SDK .NET específicas de projetos pertencem ao `global.json` de cada projeto.
@@ -45,6 +48,9 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Preserve a reversibilidade: `uninstall.sh` deve remover somente estado gerenciado pelo repositório e manter intactas configurações não relacionadas do usuário.
 - Não substitua o `~/.bashrc` ou o `~/.gitconfig` completos do usuário.
 - Preserve configurações injetadas pelo GitHub Codespaces e por outras ferramentas.
+- Nunca execute o instalador ou desinstalador como `root`; execução privilegiada está fora do lifecycle suportado.
+- Configure hooks Git localmente para este repositório; não defina um `core.hooksPath` global durante a instalação dos dotfiles.
+- Helpers de atualização devem recusar reconciliação destrutiva: não faça reset, stash ou descarte automático de alterações locais.
 - Coloque variáveis de shell entre aspas, exceto quando a expansão sem aspas for deliberada e segura.
 - Evite comandos destrutivos sem validação rigorosa do alvo.
 - Não instale globalmente SDKs, ferramentas, bancos ou serviços específicos de projetos.
@@ -58,21 +64,25 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 
 ## Validação obrigatória
 
-Para mudanças em scripts de shell, execute a partir da raiz quando o ambiente permitir:
+Para mudanças relacionadas a shell, execute a partir da raiz quando o ambiente permitir:
 
 ```bash
-bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bash scripts/validate-shell
 bats tests
+docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```
 
-Os testes Bats são a baseline executável para comportamento de lifecycle e helpers .NET. Para mudanças em `install.sh`, mantenha a cobertura de idempotência provando que:
+`bash scripts/validate-shell` é o ponto de entrada compartilhado de validação estática utilizado pelos hooks locais do repositório e pelo CI. O hook de pre-commit pode usar `--allow-missing-tools` para que a sintaxe Bash continue sendo validada quando ShellCheck ou shfmt não estiverem instalados localmente; o CI deve exigir todas as ferramentas sem essa opção.
+
+Os testes Bats são a baseline executável para comportamento de lifecycle, atualização e helpers .NET. Para mudanças em `install.sh`, mantenha a cobertura de idempotência provando que:
 
 - o bloco gerenciado não é duplicado em `~/.bashrc`;
 - o `include.path` do Git não é duplicado;
+- o `core.hooksPath` local deste repositório aponta para `.githooks`;
 - os links simbólicos continuam válidos;
 - `~/.local/bin` não é duplicado no `PATH`.
+
+O teste em container limpo deve continuar provando que instalação como root é recusada e que install, doctor, instalação repetida e uninstall funcionam para um usuário Linux normal.
 
 Se uma validação não puder ser executada por limitação real do ambiente, relate a limitação em vez de reduzir a baseline.
 
