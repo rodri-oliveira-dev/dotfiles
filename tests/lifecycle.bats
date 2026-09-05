@@ -5,12 +5,21 @@ load test_helper
 setup() {
   setup_dotfiles_test
   printf 'export USER_SETTING=preserved\n' >"$HOME/.bashrc"
+
+  ORIGINAL_HOOKS_PATH_SET=false
+  ORIGINAL_HOOKS_PATH=""
+
+  if ORIGINAL_HOOKS_PATH="$(git -C "$REPO_ROOT" config --local --get core.hooksPath 2>/dev/null)"; then
+    ORIGINAL_HOOKS_PATH_SET=true
+  fi
 }
 
 teardown() {
   if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if [[ "$(git -C "$REPO_ROOT" config --local --get core.hooksPath 2>/dev/null || true)" == ".githooks" ]]; then
-      git -C "$REPO_ROOT" config --local --unset core.hooksPath
+    git -C "$REPO_ROOT" config --local --unset-all core.hooksPath >/dev/null 2>&1 || true
+
+    if [[ "$ORIGINAL_HOOKS_PATH_SET" == "true" ]]; then
+      git -C "$REPO_ROOT" config --local core.hooksPath "$ORIGINAL_HOOKS_PATH"
     fi
   fi
 }
