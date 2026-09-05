@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ALLOW_MISSING_TOOLS=false
+
+if [[ "${1:-}" == "--allow-missing-tools" ]]; then
+  ALLOW_MISSING_TOOLS=true
+elif [[ -n "${1:-}" ]]; then
+  echo "Usage: $0 [--allow-missing-tools]" >&2
+  exit 2
+fi
+
+FILES=(
+  "$ROOT_DIR/install.sh"
+  "$ROOT_DIR/uninstall.sh"
+  "$ROOT_DIR/tests/test_helper.bash"
+  "$ROOT_DIR/tests/container-smoke.sh"
+)
+
+for directory in "$ROOT_DIR/bin" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do
+  while IFS= read -r -d '' file; do
+    FILES+=("$file")
+  done < <(find "$directory" -maxdepth 1 -type f -print0)
+done
+
+printf 'Validating Bash syntax...\n'
+bash -n "${FILES[@]}"
+
+run_optional_tool() {
+  local tool="$1"
+  shift
+
+  if command -v "$tool" >/dev/null 2>&1; then
+    "$tool" "$@"
+    return
+  fi
+
+  if [[ "$ALLOW_MISSING_TOOLS" == "true" ]]; then
+    printf 'Warning: %s is not installed; skipping this local pre-commit check. CI will enforce it.\n' "$tool" >&2
+    return
+  fi
+
+  printf 'Error: %s is required for repository validation.\n' "$tool" >&2
+  exit 1
+}
+
+printf 'Running ShellCheck...\n'
+run_optional_tool shellcheck "${FILES[@]}"
+
+printf 'Checking shell formatting...\n'
+run_optional_tool shfmt -d -i 2 "${FILES[@]}"
+
+printf 'Shell validation completed successfully.\n'
