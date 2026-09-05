@@ -9,7 +9,11 @@ on:
       - "uninstall.sh"
       - "bin/**"
       - "shell/**"
+      - "scripts/**"
+      - ".githooks/**"
       - "tests/**"
+      - "Dockerfile.test"
+      - ".dockerignore"
       - ".editorconfig"
       - ".gitattributes"
       - ".github/workflows/validate.yml"
@@ -20,7 +24,11 @@ on:
       - "uninstall.sh"
       - "bin/**"
       - "shell/**"
+      - "scripts/**"
+      - ".githooks/**"
       - "tests/**"
+      - "Dockerfile.test"
+      - ".dockerignore"
       - ".editorconfig"
       - ".gitattributes"
       - ".github/workflows/validate.yml"
@@ -49,31 +57,28 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bats shfmt
+          sudo apt-get install --yes bats shellcheck shfmt
 
-      - name: Validate Bash syntax
+      - name: Validate shell sources
         shell: bash
-        run: |
-          bash -n install.sh
-          bash -n uninstall.sh
-          bash -n bin/*
-          bash -n shell/*.sh
-          bash -n tests/test_helper.bash
-
-      - name: Run ShellCheck
-        shell: bash
-        run: |
-          shellcheck install.sh
-          shellcheck uninstall.sh
-          shellcheck bin/*
-          shellcheck shell/*.sh
-          shellcheck tests/test_helper.bash
-
-      - name: Check shell formatting
-        shell: bash
-        run: |
-          shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+        run: bash scripts/validate-shell
 
       - name: Run Bats tests
         shell: bash
         run: bats tests
+
+  container:
+    name: Clean container lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: shell
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build lifecycle test image
+        shell: bash
+        run: docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
