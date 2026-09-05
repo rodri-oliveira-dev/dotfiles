@@ -1,0 +1,29 @@
+FROM ubuntu:24.04
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends bash ca-certificates git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace/dotfiles
+COPY . .
+
+RUN if ./install.sh >/tmp/root-install.log 2>&1; then \
+      cat /tmp/root-install.log; \
+      echo "install.sh unexpectedly succeeded as root" >&2; \
+      exit 1; \
+    fi \
+    && grep -Fq "must not be run as root" /tmp/root-install.log
+
+RUN useradd --create-home --shell /bin/bash developer \
+    && chown -R developer:developer /workspace/dotfiles
+
+USER developer
+ENV HOME=/home/developer
+ENV XDG_CONFIG_HOME=/home/developer/.config
+ENV PATH=/home/developer/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN git init -q \
+    && git config user.name "Dotfiles Test" \
+    && git config user.email "dotfiles-test@example.invalid"
+
+RUN bash tests/container-smoke.sh
