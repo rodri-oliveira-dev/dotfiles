@@ -140,6 +140,24 @@ if command -v git >/dev/null 2>&1; then
   else
     fail "Git include.path does not reference $STABLE_GIT_CONFIG_FILE"
   fi
+
+  if git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    HOOKS_PATH="$(git -C "$DOTFILES_DIR" config --local --get core.hooksPath 2>/dev/null || true)"
+
+    if [[ "$HOOKS_PATH" == ".githooks" ]]; then
+      pass "repository core.hooksPath uses .githooks"
+    else
+      fail "repository core.hooksPath is '$HOOKS_PATH' instead of .githooks"
+    fi
+
+    if [[ -x "$DOTFILES_DIR/.githooks/pre-commit" ]]; then
+      pass "pre-commit hook is executable"
+    else
+      fail "pre-commit hook is not executable"
+    fi
+  else
+    warn "dotfiles directory is not a Git worktree; repository hook configuration was not checked"
+  fi
 fi
 
 printf '\nExecutable helpers\n'
