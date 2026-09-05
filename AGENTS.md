@@ -16,12 +16,13 @@ Read only what is relevant to the task, prioritizing:
 2. `install.sh` and `uninstall.sh`;
 3. files under `shell/`;
 4. files under `bin/`;
-5. `git/config`;
-6. `.editorconfig`, `.gitattributes`, and `.gitignore`;
-7. tests under `tests/`;
-8. workflows that actually exist under `.github/workflows/`;
-9. `.github/dependabot.yml` for automated GitHub Actions dependency maintenance;
-10. `.agents/skills/` for specialized tasks.
+5. repository hooks under `.githooks/` and shared validation under `scripts/`;
+6. `git/config`;
+7. `.editorconfig`, `.gitattributes`, `.gitignore`, `.dockerignore`, and `Dockerfile.test`;
+8. tests under `tests/`;
+9. workflows that actually exist under `.github/workflows/`;
+10. `.github/dependabot.yml` for automated GitHub Actions dependency maintenance;
+11. `.agents/skills/` for specialized tasks.
 
 Do not assume a tool, workflow, service, secret, or dependency exists unless it is present in the repository or explicitly provided by the environment.
 
@@ -29,6 +30,8 @@ Do not assume a tool, workflow, service, secret, or dependency exists unless it 
 
 - Personal shell preferences and aliases belong in `shell/`.
 - Small executable helpers belong in `bin/`.
+- Repository-local Git hooks belong in `.githooks/`; they must not override hooks in unrelated repositories.
+- Shared repository validation entry points belong in `scripts/`.
 - Personal Git defaults belong in `git/config`.
 - Installation and linking behavior belongs in `install.sh`; safe removal belongs in `uninstall.sh`; environment diagnostics belong in `bin/dotfiles-doctor`.
 - Project-specific .NET SDK versions belong in each project's `global.json`.
@@ -45,6 +48,9 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Preserve reversibility: `uninstall.sh` must remove only repository-managed state and leave unrelated user configuration intact.
 - Do not replace the user's complete `~/.bashrc` or `~/.gitconfig`.
 - Preserve settings injected by GitHub Codespaces and other tools.
+- Never run the installer or uninstaller as `root`; privileged execution is outside the supported lifecycle.
+- Configure Git hooks locally for this repository; do not set a global `core.hooksPath` as part of dotfiles installation.
+- Update helpers must refuse destructive reconciliation: do not reset, stash, or discard local changes automatically.
 - Quote shell variables unless unquoted expansion is deliberate and safe.
 - Avoid destructive commands unless the target is tightly validated.
 - Do not install project-specific SDKs, tools, databases, or services globally.
@@ -58,21 +64,25 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 
 ## Required validation
 
-For changes to shell scripts, run from the repository root when the environment allows:
+For shell-related changes, run from the repository root when the environment allows:
 
 ```bash
-bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bash scripts/validate-shell
 bats tests
+docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```
 
-Bats tests are the executable baseline for lifecycle and .NET helper behavior. For changes to `install.sh`, keep the idempotency coverage proving that:
+`bash scripts/validate-shell` is the shared static-validation entry point used by local repository hooks and CI. The pre-commit hook may use `--allow-missing-tools` so Bash syntax still runs when ShellCheck or shfmt are absent locally; CI must enforce all tools without that option.
+
+Bats tests are the executable baseline for lifecycle, update, and .NET helper behavior. For changes to `install.sh`, keep the idempotency coverage proving that:
 
 - the managed block is not duplicated in `~/.bashrc`;
 - Git `include.path` is not duplicated;
+- repository-local `core.hooksPath` points to `.githooks`;
 - symlinks remain valid;
 - `~/.local/bin` is not duplicated in `PATH`.
+
+The clean-container test must continue to prove that root installation is rejected and that install, doctor, repeated install, and uninstall work for a normal Linux user.
 
 If a validation cannot be executed because of a real environment limitation, report the limitation rather than weakening the baseline.
 
