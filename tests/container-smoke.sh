@@ -21,7 +21,15 @@ printf 'export USER_SETTING=preserved\n' >"$BASHRC"
 ./uninstall.sh
 
 grep -Fq 'export USER_SETTING=preserved' "$BASHRC"
-! grep -Fq '# >>> rodri-dotfiles >>>' "$BASHRC"
-! git config --local --get core.hooksPath >/dev/null 2>&1
+
+if grep -Fq '# >>> rodri-dotfiles >>>' "$BASHRC"; then
+  printf 'Managed Bash block was not removed by uninstall.\n' >&2
+  exit 1
+fi
+
+if git config --local --get core.hooksPath >/dev/null 2>&1; then
+  printf 'Managed core.hooksPath was not removed by uninstall.\n' >&2
+  exit 1
+fi
 
 printf 'Container lifecycle smoke test completed successfully.\n'
