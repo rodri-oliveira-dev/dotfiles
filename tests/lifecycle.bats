@@ -5,6 +5,23 @@ load test_helper
 setup() {
   setup_dotfiles_test
   printf 'export USER_SETTING=preserved\n' >"$HOME/.bashrc"
+
+  ORIGINAL_HOOKS_PATH_SET=false
+  ORIGINAL_HOOKS_PATH=""
+
+  if ORIGINAL_HOOKS_PATH="$(git -C "$REPO_ROOT" config --local --get core.hooksPath 2>/dev/null)"; then
+    ORIGINAL_HOOKS_PATH_SET=true
+  fi
+}
+
+teardown() {
+  if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$REPO_ROOT" config --local --unset-all core.hooksPath >/dev/null 2>&1 || true
+
+    if [[ "$ORIGINAL_HOOKS_PATH_SET" == "true" ]]; then
+      git -C "$REPO_ROOT" config --local core.hooksPath "$ORIGINAL_HOOKS_PATH"
+    fi
+  fi
 }
 
 @test "install is idempotent and creates stable managed links" {
@@ -24,6 +41,8 @@ setup() {
   [ "$(readlink "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig")" = "$REPO_ROOT/git/config" ]
 
   [ "$(git config --global --get-all include.path | grep -Fxc "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig")" -eq 1 ]
+  [ "$(git -C "$REPO_ROOT" config --local --get core.hooksPath)" = ".githooks" ]
+  [ -x "$REPO_ROOT/.githooks/pre-commit" ]
 
   for script in "$REPO_ROOT"/bin/*; do
     [ "$(readlink "$HOME/.local/bin/$(basename "$script")")" = "$script" ]
@@ -38,6 +57,7 @@ setup() {
   [ "$status" -eq 0 ]
   assert_contains "$output" "Failures: 0"
   assert_contains "$output" "managed $HOME/.bashrc block is present exactly once"
+  assert_contains "$output" "repository core.hooksPath uses .githooks"
 }
 
 @test "uninstall removes only repository-managed state" {
@@ -63,6 +83,7 @@ setup() {
 
   git config --global --get-all include.path | grep -Fxq "$HOME/custom-gitconfig"
   ! git config --global --get-all include.path | grep -Fxq "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig"
+  ! git -C "$REPO_ROOT" config --local --get core.hooksPath >/dev/null 2>&1
 
   for script in "$REPO_ROOT"/bin/*; do
     [ ! -e "$HOME/.local/bin/$(basename "$script")" ]

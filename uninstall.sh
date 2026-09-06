@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ((EUID == 0)); then
+  echo "Error: uninstall.sh must not be run as root. Run it as your normal development user." >&2
+  exit 1
+fi
+
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 CONFIG_DIR="$XDG_CONFIG_HOME/rodri-dotfiles"
@@ -75,8 +80,17 @@ if command -v git >/dev/null 2>&1; then
   git config --global --fixed-value --unset-all include.path "$STABLE_GIT_CONFIG_FILE" 2>/dev/null || true
   git config --global --fixed-value --unset-all include.path "$LEGACY_GIT_CONFIG_FILE" 2>/dev/null || true
   echo "Removed managed Git include.path entries."
+
+  if git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    CURRENT_HOOKS_PATH="$(git -C "$DOTFILES_DIR" config --local --get core.hooksPath 2>/dev/null || true)"
+
+    if [[ "$CURRENT_HOOKS_PATH" == ".githooks" ]]; then
+      git -C "$DOTFILES_DIR" config --local --unset core.hooksPath
+      echo "Removed managed repository hooks path."
+    fi
+  fi
 else
-  echo "Warning: git is not available; Git include.path entries were not changed." >&2
+  echo "Warning: git is not available; Git configuration was not changed." >&2
 fi
 
 for script in "$DOTFILES_DIR"/bin/*; do

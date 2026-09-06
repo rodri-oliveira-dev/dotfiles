@@ -34,36 +34,39 @@ Este repositório contém apenas preferências e helpers no nível do desenvolve
 dotfiles/
 ├── .agents/
 │   └── skills/
-│       ├── codespaces-integration/
-│       │   └── SKILL.md
-│       ├── dotfiles-change/
-│       │   └── SKILL.md
-│       └── shell-hardening/
-│           └── SKILL.md
+├── .githooks/
+│   └── pre-commit
 ├── .github/
 │   ├── dependabot.yml
 │   └── workflows/
 │       └── validate.yml
 ├── bin/
 │   ├── dotfiles-doctor
+│   ├── dotfiles-update
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   └── git-root
 ├── git/
 │   └── config
+├── scripts/
+│   └── validate-shell
 ├── shell/
 │   ├── aliases.sh
 │   ├── dotnet.sh
 │   └── git.sh
 ├── tests/
+│   ├── container-smoke.sh
 │   ├── dotnet-helpers.bats
 │   ├── lifecycle.bats
+│   ├── update.bats
 │   └── test_helper.bash
+├── .dockerignore
 ├── .editorconfig
 ├── .gitattributes
 ├── .gitignore
 ├── AGENTS.md
 ├── AGENTS.pt-BR.md
+├── Dockerfile.test
 ├── install.sh
 ├── uninstall.sh
 ├── LICENSE
@@ -95,13 +98,14 @@ No GitHub:
 
 Ao criar um novo Codespace, o GitHub pode clonar este repositório e executar o `install.sh`.
 
-O instalador foi projetado para ser idempotente. Ele:
+O instalador foi projetado para ser idempotente e deve ser executado pelo usuário normal de desenvolvimento, nunca como `root`. Ele:
 
 - usa `${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles` como localização estável de configuração;
 - cria links para os helpers de shell e para a configuração Git nessa localização;
 - adiciona o bloco dos dotfiles ao `~/.bashrc` apenas uma vez e carrega os fragmentos somente quando estão legíveis;
 - migra o `include.path` Git original, relativo ao repositório, para a localização estável;
-- disponibiliza os scripts de `bin/` por meio de `~/.local/bin`.
+- disponibiliza os scripts de `bin/` por meio de `~/.local/bin`;
+- configura o `core.hooksPath` local deste repositório para `.githooks`, sem alterar o caminho global de hooks utilizado pelos outros repositórios.
 
 Ele deliberadamente **não** substitui o `~/.bashrc` ou o `~/.gitconfig` completos, evitando sobrescrever configurações criadas pelo Codespaces ou por outras ferramentas.
 
@@ -129,7 +133,15 @@ Verifique o ambiente atual:
 dotfiles-doctor
 ```
 
-O doctor valida o bloco Bash gerenciado, PATH, links de configuração, `include.path` do Git, links dos helpers executáveis, disponibilidade de Bash/Git e informa o SDK .NET detectado quando disponível. Ele retorna código diferente de zero quando uma invariável da configuração gerenciada está quebrada.
+O doctor valida o bloco Bash gerenciado, PATH, links de configuração, `include.path` do Git, configuração local dos hooks deste repositório, links dos helpers executáveis, disponibilidade de Bash/Git e informa o SDK .NET detectado quando disponível. Ele retorna código diferente de zero quando uma invariável da configuração gerenciada está quebrada.
+
+Atualize com segurança um clone existente:
+
+```bash
+dotfiles-update
+```
+
+O `dotfiles-update` se recusa a executar quando o worktree possui alterações não commitadas, quando o repositório está em detached HEAD ou quando a branch atual não possui upstream. Ele busca alterações remotas, aplica somente um pull fast-forward, executa novamente o `install.sh` e termina com `dotfiles-doctor`. O comando nunca executa reset, stash ou descarte automático de trabalho local.
 
 Remova apenas a configuração pertencente a este repositório:
 
@@ -137,7 +149,19 @@ Remova apenas a configuração pertencente a este repositório:
 ./uninstall.sh
 ```
 
-O desinstalador remove o bloco gerenciado do `~/.bashrc`, as entradas Git exatas e os links simbólicos criados pelo repositório. Arquivos do usuário, configurações Git não relacionadas, outras configurações de shell, `~/.local/bin` e arquivos não gerenciados permanecem intactos.
+O desinstalador remove o bloco gerenciado do `~/.bashrc`, as entradas Git exatas, o caminho local de hooks gerenciado deste repositório e os links simbólicos criados pelo repositório. Arquivos do usuário, configurações Git não relacionadas, outras configurações de shell, `~/.local/bin` e arquivos não gerenciados permanecem intactos.
+
+## Git hooks do repositório
+
+Ao executar `install.sh`, `.githooks` é configurado somente para este repositório de dotfiles. O instalador não define um `core.hooksPath` global, portanto hooks específicos dos seus outros repositórios .NET permanecem intactos.
+
+O hook `pre-commit` sempre executa a validação de sintaxe Bash. Quando ShellCheck e shfmt estão instalados localmente, também executa essas verificações. A ausência dessas ferramentas locais gera um aviso em vez de bloquear o commit; o CI continua sendo o gate autoritativo e sempre instala e exige ambas.
+
+Hook e CI compartilham o mesmo ponto de entrada de validação:
+
+```bash
+bash scripts/validate-shell
+```
 
 ## Comandos .NET
 
@@ -276,7 +300,7 @@ Preferências pessoais do editor devem ser sincronizadas pelo VS Code Settings S
 
 ## Validação e testes automatizados
 
-O repositório valida tanto qualidade estática quanto comportamento observável.
+O repositório valida qualidade estática, comportamento observável e o ciclo de vida completo da instalação.
 
 Validação estática:
 
@@ -284,18 +308,19 @@ Validação estática:
 - análise de shell com ShellCheck;
 - formatação determinística com `shfmt -d -i 2`.
 
-A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git, comportamento de doctor/uninstall, descoberta da raiz do repositório, restore de ferramentas .NET locais e tratamento de uma ou várias solutions.
+A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais e tratamento de uma ou várias solutions.
 
-Para executar localmente, depois de instalar `bats` e `shfmt`:
+Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
+
+Para executar localmente, depois de instalar `bats`, `shellcheck` e `shfmt`:
 
 ```bash
-bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bash scripts/validate-shell
 bats tests
+docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```
 
-Bats e shfmt são dependências somente de desenvolvimento/CI; o `install.sh` não os instala no ambiente pessoal.
+Essas ferramentas são dependências somente de desenvolvimento/CI; o `install.sh` não as instala no ambiente pessoal.
 
 ### Hardening do CI
 
@@ -303,9 +328,10 @@ O workflow de validação é deliberadamente restrito e endurecido:
 
 - executa somente quando entradas que afetam shell/runtime são alteradas, evitando uso de runner em mudanças apenas documentais;
 - concurrency cancela execuções antigas da mesma ref quando chega um commit mais novo;
-- o job de validação possui timeout de cinco minutos;
+- a validação de shell possui timeout de cinco minutos e a validação em container limpo possui timeout de dez minutos;
 - as permissões do repositório são somente leitura;
 - `actions/checkout` fica fixado em um commit SHA completo e não persiste credenciais;
+- o job de container limpo executa somente depois que validação estática e Bats passam;
 - o Dependabot verifica semanalmente dependências do GitHub Actions e agrupa atualizações disponíveis em um único pull request.
 
 Arquivos:
@@ -313,6 +339,7 @@ Arquivos:
 ```text
 .github/workflows/validate.yml
 .github/dependabot.yml
+Dockerfile.test
 ```
 
 Se esse workflow passar a ser um status check obrigatório no futuro, revise os filtros de paths antes de depender dele em pull requests somente de documentação.

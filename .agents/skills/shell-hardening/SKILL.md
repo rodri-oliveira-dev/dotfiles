@@ -13,9 +13,10 @@ Improve shell-script reliability and safety without introducing unnecessary comp
 1. Prefer explicit, readable Bash.
 2. Preserve `set -euo pipefail` where appropriate.
 3. Quote variable expansions unless unquoted expansion is intentionally required.
-4. Treat filesystem paths, symlink targets, and user configuration files as sensitive mutation boundaries.
+4. Treat filesystem paths, symlink targets, Git configuration, and user configuration files as sensitive mutation boundaries.
 5. Make repeated execution safe.
 6. Fail diagnostically instead of silently corrupting state.
+7. Never discard local Git work automatically from lifecycle helpers.
 
 # Review focus
 
@@ -24,13 +25,15 @@ Inspect changes for:
 - word splitting and glob expansion;
 - unbound variables;
 - pipelines whose failures may be hidden;
-- unsafe `rm`, `mv`, `cp`, or redirection targets;
+- unsafe `rm`, `mv`, `cp`, reset, stash, or redirection targets;
 - missing existence/type checks before filesystem operations;
 - symlink replacement behavior;
 - duplicate configuration blocks;
 - PATH duplication;
 - malformed heredocs;
 - commands that depend on tools not guaranteed by the environment;
+- accidental global Git configuration when repository-local configuration is sufficient;
+- privileged/root execution outside explicitly supported paths;
 - formatting drift detectable by `shfmt`;
 - ShellCheck warnings that indicate real correctness or maintainability issues.
 
@@ -40,21 +43,22 @@ Inspect changes for:
 2. Define the existing observable behavior.
 3. Identify the concrete shell-safety risk.
 4. Apply the smallest correction.
-5. Preserve idempotency.
+5. Preserve idempotency and reversibility.
 6. Avoid broad rewrites purely for style.
-7. Validate syntax and ShellCheck.
-8. For installer changes, test repeated execution in an isolated environment when possible.
+7. Validate through the shared shell validator and Bats.
+8. For lifecycle changes, test repeated execution in the clean container when possible.
 
 # Validation
 
 ```bash
-bash -n install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shellcheck install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
-shfmt -d -i 2 install.sh uninstall.sh bin/* shell/*.sh tests/test_helper.bash
+bash scripts/validate-shell
 bats tests
+docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```
 
-Bats tests must continue to prove that multiple installations do not duplicate the managed Bash block, Git includes, or PATH entries, and that uninstall preserves unrelated state.
+Bats tests must continue to prove that multiple installations do not duplicate the managed Bash block, Git includes, repository hook configuration, or PATH entries, and that uninstall preserves unrelated state.
+
+The clean-container test must continue to prove that `install.sh` refuses root execution and that the supported non-root lifecycle succeeds.
 
 # Restrictions
 
@@ -64,18 +68,21 @@ Bats tests must continue to prove that multiple installations do not duplicate t
 - Do not assume the current working directory unless the script explicitly requires it.
 - Do not replace complete user-owned configuration files.
 - Do not broaden permissions or use `sudo` without a concrete requirement.
+- Do not configure a global `core.hooksPath` when a repository-local hooks path satisfies the requirement.
+- Do not make update helpers reset, stash, or discard uncommitted work automatically.
 
 # CI expectations
 
 When shell validation changes, preserve:
 
-- Bash syntax validation before behavioral tests;
-- ShellCheck and shfmt as static gates;
+- `scripts/validate-shell` as the shared static-validation gate;
+- ShellCheck and shfmt enforcement in CI;
 - Bats as the behavioral gate;
-- a bounded workflow timeout;
+- a clean-container lifecycle gate for environment-level behavior;
+- bounded workflow timeouts;
 - cancellation of stale runs for the same ref;
 - full-SHA pinning for third-party actions.
 
 # Quality criteria
 
-A good hardening change reduces a specific failure mode, keeps the script understandable, remains idempotent, and passes syntax plus ShellCheck validation.
+A good hardening change reduces a specific failure mode, keeps the script understandable, remains idempotent and reversible, and passes static, behavioral, and environment-level validation.
