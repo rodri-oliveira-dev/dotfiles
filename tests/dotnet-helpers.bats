@@ -161,3 +161,27 @@ EOF
   assert_contains "$output" "(none)"
   assert_contains "$output" "warning"
 }
+
+@test "dotnet-repo-doctor detects test PackageReference attributes split across lines" {
+  : >"$PROJECT_ROOT/App.slnx"
+  mkdir -p "$PROJECT_ROOT/tests/App.Tests"
+
+  cat >"$PROJECT_ROOT/tests/App.Tests/App.Tests.csproj" <<'EOF'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference
+      Include="Microsoft.NET.Test.Sdk"
+      Version="18.0.0" />
+  </ItemGroup>
+</Project>
+EOF
+
+  run bash -c 'cd "$1" && "$2" --json' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-repo-doctor"
+
+  [ "$status" -eq 0 ]
+  assert_contains "$output" '"count":1'
+  assert_contains "$output" '"testCount":1'
+}
