@@ -114,17 +114,17 @@ shopt -u nullglob
 mapfile -t PROJECTS < <(
   find "$ROOT" \
     \( -type d \( \
-      -name .git -o \
-      -name bin -o \
-      -name obj -o \
-      -name node_modules -o \
-      -name artifacts -o \
-      -name .artifacts \
+    -name .git -o \
+    -name bin -o \
+    -name obj -o \
+    -name node_modules -o \
+    -name artifacts -o \
+    -name .artifacts \
     \) -prune \) -o \
     \( -type f \( \
-      -name '*.csproj' -o \
-      -name '*.fsproj' -o \
-      -name '*.vbproj' \
+    -name '*.csproj' -o \
+    -name '*.fsproj' -o \
+    -name '*.vbproj' \
     \) -print \) | sort
 )
 
