@@ -128,11 +128,26 @@ mapfile -t PROJECTS < <(
     \) -print \) | sort
 )
 
+project_is_test() {
+  awk '
+    {
+      content = content " " tolower($0)
+    }
+    END {
+      if (content ~ /<istestproject>[[:space:]]*true[[:space:]]*<\/istestproject>/) {
+        exit 0
+      }
+      if (content ~ /<packagereference[^>]*include[[:space:]]*=[[:space:]]*"(microsoft\.net\.test\.sdk|xunit|nunit|mstest\.testframework)"/) {
+        exit 0
+      }
+      exit 1
+    }
+  ' "$1"
+}
+
 TEST_PROJECT_COUNT=0
 for project in "${PROJECTS[@]}"; do
-  if grep -Eiq \
-    '<IsTestProject>[[:space:]]*true[[:space:]]*</IsTestProject>|<PackageReference[^>]+Include="(Microsoft\.NET\.Test\.Sdk|xunit|NUnit|MSTest\.TestFramework)"' \
-    "$project"; then
+  if project_is_test "$project"; then
     ((TEST_PROJECT_COUNT += 1))
   fi
 done
