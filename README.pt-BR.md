@@ -45,8 +45,10 @@ dotfiles/
 │   ├── dotfiles-update
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
+│   ├── dotnet-deps
 │   ├── dotnet-repo-doctor
 │   ├── dotnet-verify
+│   ├── dotnet-why
 │   └── git-root
 ├── git/
 │   └── config
@@ -58,6 +60,7 @@ dotfiles/
 │   └── git.sh
 ├── tests/
 │   ├── container-smoke.sh
+│   ├── dotnet-deps.bats
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
@@ -99,7 +102,7 @@ No GitHub:
 4. Ative a instalação automática de dotfiles.
 5. Selecione este repositório.
 
-Ao criar um novo Codespace, o GitHub pode clonar este repositório e executar o `install.sh`.
+Ao criar um novo Codespace, o GitHub pode clonar este repositório e executar `install.sh`.
 
 O instalador foi projetado para ser idempotente e deve ser executado pelo usuário normal de desenvolvimento, nunca como `root`. Ele:
 
@@ -211,6 +214,21 @@ Exibe o SDK efetivo e detecta convenções comuns a partir da raiz do repositór
 dotnet-context
 ```
 
+### `dotnet-deps`
+
+Inspeciona a saúde das dependências NuGet sem atualizar pacotes ou alterar arquivos de projeto. Os diagnósticos suportados são `vulnerable`, `outdated` e `deprecated`; `--include-transitive` inclui referências transitivas e `--json` solicita o relatório JSON estável quando o SDK resolvido oferece suporte.
+
+```bash
+dotnet-deps vulnerable
+dotnet-deps vulnerable --include-transitive --json
+dotnet-deps outdated
+dotnet-deps deprecated MinhaApp.slnx
+```
+
+O helper resolve o SDK do repositório antes de executar o diagnóstico. Com .NET 10 ou posterior usa `dotnet package list`; com .NET 9 ou anterior usa `dotnet list package`. A saída JSON exige .NET SDK 7.0.200 ou posterior. Quando existe exatamente uma solution na raiz, ela é selecionada automaticamente; múltiplas solutions na raiz exigem alvo explícito.
+
+O comando de listagem de pacotes pode consultar as fontes NuGet configuradas, e o .NET 10 pode executar restore automaticamente quando necessário. O helper nunca atualiza versões de pacotes. Chamada inválida, SDK não resolvido, saída JSON sem suporte, alvo inexistente ou seleção ambígua de solution retornam código `2`; nos demais casos, o exit code da CLI do .NET é preservado.
+
 ### `dotnet-repo-doctor`
 
 Executa um diagnóstico somente leitura do repositório .NET atual a partir de qualquer diretório dentro do worktree Git. Ele informa estado do repositório/branch, SDK solicitado e resolvido, solutions na raiz, quantidade de projetos e projetos de teste, target frameworks declarados, Central Package Management, tool manifest local e arquivos comuns de configuração.
@@ -241,6 +259,18 @@ dotnet-verify MinhaApp.slnx
 `--quick` executa somente restore e build. `--full` seleciona explicitamente a verificação completa, que também é o comportamento padrão. `--no-format` e `--no-test` ignoram individualmente esses gates. Quando existe exatamente um `.sln` ou `.slnx` na raiz, essa solution é selecionada automaticamente; múltiplas solutions exigem um alvo explícito.
 
 O helper não instala ferramentas globais nem altera configurações do projeto. O exit code `0` indica que todas as etapas selecionadas passaram, `1` indica falha em restore/build/format/test e `2` indica que a chamada ou o ambiente não puderam ser resolvidos com segurança, como CLI do .NET ausente, SDK incompatível, alvo inexistente ou seleção ambígua de solution.
+
+### `dotnet-why`
+
+Exibe o grafo de dependências que explica por que um pacote NuGet está presente, encapsulando `dotnet nuget why`.
+
+```bash
+dotnet-why Microsoft.CodeAnalysis.Common
+dotnet-why Microsoft.CodeAnalysis.Common MinhaApp.slnx
+dotnet-why --framework net8.0 Microsoft.CodeAnalysis.Common
+```
+
+O `dotnet-why` exige .NET SDK 8.0.400 ou posterior. Ele seleciona automaticamente uma única solution na raiz, exige alvo explícito quando existem múltiplas solutions na raiz e aceita `--framework`/`-f` para restringir o grafo a um target framework. O comando não altera o repositório. Chamada inválida, SDK sem suporte, alvo inexistente ou seleção ambígua retornam código `2`; nos demais casos, o exit code do `dotnet nuget why` é preservado.
 
 ### `dotnet-sdk`
 
@@ -342,7 +372,7 @@ Validação estática:
 - análise de shell com ShellCheck;
 - formatação determinística com `shfmt -d -i 2`.
 
-A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET e os modos e o comportamento de falha do preflight `dotnet-verify`.
+A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET, os modos e o comportamento de falha do preflight `dotnet-verify` e os diagnósticos de saúde/origem de dependências NuGet nas formas de comando compatíveis com os SDKs suportados.
 
 Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
 
