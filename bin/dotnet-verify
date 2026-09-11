@@ -119,8 +119,7 @@ if [[ -n "$EXPLICIT_TARGET" ]]; then
   fi
 else
   case "${#SOLUTIONS[@]}" in
-  0)
-    ;;
+  0) ;;
   1)
     TARGET="${SOLUTIONS[0]}"
     ;;
