@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: dotnet-why [--framework <framework>] <package> [target]
+
+Show why a NuGet package is present in the current .NET repository.
+
+Options:
+  -f, --framework <framework>  Restrict the dependency graph to one framework.
+  --help                       Show this help message.
+
+Target:
+  Optional project or solution path. When omitted, a single root-level .sln or
+  .slnx is selected automatically. Multiple root-level solutions require an
+  explicit target.
+USAGE
+}
+
+PACKAGE=""
+FRAMEWORK=""
+EXPLICIT_TARGET=""
+
+while (($# > 0)); do
+  case "$1" in
+  -f | --framework)
+    if (($# < 2)) || [[ -z "$2" ]]; then
+      echo "Error: --framework requires a value." >&2
+      usage >&2
+      exit 2
+    fi
+    FRAMEWORK="$2"
+    shift
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    while (($# > 0)); do
+      if [[ -z "$PACKAGE" ]]; then
+        PACKAGE="$1"
+      elif [[ -z "$EXPLICIT_TARGET" ]]; then
+        EXPLICIT_TARGET="$1"
+      else
+        echo "Error: only one package and one target may be specified." >&2
+        usage >&2
+        exit 2
+      fi
+      shift
+    done
+    break
+    ;;
+  -*)
+    printf 'Error: unsupported argument: %s\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+  *)
+    if [[ -z "$PACKAGE" ]]; then
+      PACKAGE="$1"
+    elif [[ -z "$EXPLICIT_TARGET" ]]; then
+      EXPLICIT_TARGET="$1"
+    else
+      echo "Error: only one package and one target may be specified." >&2
+      usage >&2
+      exit 2
+    fi
+    ;;
+  esac
+  shift
+done
+
+if [[ -z "$PACKAGE" ]]; then
+  echo "Error: a package ID is required." >&2
+  usage >&2
+  exit 2
+fi
+
+if ! command -v dotnet >/dev/null 2>&1; then
+  echo "Error: .NET SDK is not available in PATH." >&2
+  exit 2
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+  if [[ -f "$ROOT/global.json" ]]; then
+    echo "Error: no compatible .NET SDK could be resolved for $ROOT/global.json." >&2
+  else
+    echo "Error: no .NET SDK could be resolved for $ROOT." >&2
+  fi
+  exit 2
+fi
+
+SDK_CORE="${SDK_VERSION%%-*}"
+IFS=. read -r SDK_MAJOR SDK_MINOR SDK_PATCH _ <<<"$SDK_CORE"
+
+if ! [[ "$SDK_MAJOR" =~ ^[0-9]+$ && "$SDK_MINOR" =~ ^[0-9]+$ && "$SDK_PATCH" =~ ^[0-9]+$ ]]; then
+  printf 'Error: unable to interpret resolved .NET SDK version: %s\n' "$SDK_VERSION" >&2
+  exit 2
+fi
+
+if ((SDK_MAJOR < 8 || (SDK_MAJOR == 8 && SDK_MINOR == 0 && SDK_PATCH < 400))); then
+  printf 'Error: dotnet nuget why requires .NET SDK 8.0.400 or later; resolved %s.\n' "$SDK_VERSION" >&2
+  exit 2
+fi
+
+shopt -s nullglob
+SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
+shopt -u nullglob
+
+print_solution_choices() {
+  echo "Multiple solution files were found in the repository root:" >&2
+
+  local solution
+  for solution in "${SOLUTIONS[@]}"; do
+    printf '  - %s\n' "${solution#"$ROOT"/}" >&2
+  done
+
+  echo >&2
+  echo "Specify the target explicitly, for example:" >&2
+  printf '  dotnet-why %s %s\n' "$PACKAGE" "${SOLUTIONS[0]#"$ROOT"/}" >&2
+}
+
+TARGET=""
+if [[ -n "$EXPLICIT_TARGET" ]]; then
+  if [[ "$EXPLICIT_TARGET" == /* ]]; then
+    TARGET="$EXPLICIT_TARGET"
+  else
+    TARGET="$ROOT/$EXPLICIT_TARGET"
+  fi
+
+  if [[ ! -e "$TARGET" ]]; then
+    printf 'Error: target does not exist: %s\n' "$EXPLICIT_TARGET" >&2
+    exit 2
+  fi
+else
+  case "${#SOLUTIONS[@]}" in
+  0) ;;
+  1)
+    TARGET="${SOLUTIONS[0]}"
+    ;;
+  *)
+    print_solution_choices
+    exit 2
+    ;;
+  esac
+fi
+
+COMMAND=(nuget why)
+if [[ -n "$TARGET" ]]; then
+  COMMAND+=("$TARGET")
+fi
+COMMAND+=("$PACKAGE")
+
+if [[ -n "$FRAMEWORK" ]]; then
+  COMMAND+=(--framework "$FRAMEWORK")
+fi
+
+(cd "$ROOT" && dotnet "${COMMAND[@]}")
