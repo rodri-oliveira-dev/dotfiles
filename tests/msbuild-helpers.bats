@@ -116,3 +116,31 @@ setup() {
   assert_contains "$output" "target must be a .csproj, .fsproj, or .vbproj file"
   ! grep -Fq '|msbuild ' "$DOTNET_LOG"
 }
+
+@test "dotnet-props preserves an explicit target when option separator is last" {
+  mkdir -p "$PROJECT_ROOT/src/App" "$PROJECT_ROOT/src/Other"
+  : >"$PROJECT_ROOT/src/App/App.csproj"
+  : >"$PROJECT_ROOT/src/Other/Other.csproj"
+
+  run bash -c 'cd "$1" && "$2" --json src/App/App.csproj --' _ \
+    "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-props"
+
+  [ "$status" -eq 0 ]
+  grep -Fq \
+    "$PROJECT_ROOT|msbuild $PROJECT_ROOT/src/App/App.csproj -getProperty:TargetFramework,TargetFrameworks,Configuration,Platform,RuntimeIdentifier,RuntimeIdentifiers,LangVersion,Nullable,ImplicitUsings,TreatWarningsAsErrors,WarningsAsErrors,NoWarn,ManagePackageVersionsCentrally,CentralPackageTransitivePinningEnabled,RestorePackagesWithLockFile,ContinuousIntegrationBuild,Deterministic,GenerateDocumentationFile,OutputPath -nologo" \
+    "$DOTNET_LOG"
+  ! grep -Fq "$PROJECT_ROOT/src/Other/Other.csproj" "$DOTNET_LOG"
+}
+
+@test "dotnet-props rejects a second target after option separator" {
+  mkdir -p "$PROJECT_ROOT/src/App" "$PROJECT_ROOT/src/Other"
+  : >"$PROJECT_ROOT/src/App/App.csproj"
+  : >"$PROJECT_ROOT/src/Other/Other.csproj"
+
+  run bash -c 'cd "$1" && "$2" src/App/App.csproj -- src/Other/Other.csproj' _ \
+    "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-props"
+
+  [ "$status" -eq 2 ]
+  assert_contains "$output" "only one target may be specified"
+  ! grep -Fq '|msbuild ' "$DOTNET_LOG"
+}
