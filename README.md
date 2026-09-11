@@ -45,6 +45,7 @@ dotfiles/
 │   ├── dotfiles-update
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
+│   ├── dotnet-repo-doctor
 │   └── git-root
 ├── git/
 │   └── config
@@ -208,6 +209,22 @@ Displays the effective SDK and detects common repository conventions from the Gi
 dotnet-context
 ```
 
+### `dotnet-repo-doctor`
+
+Performs a read-only diagnostic of the current .NET repository from any directory inside the Git worktree. It reports repository/branch state, requested and resolved SDKs, root-level solutions, project and test-project counts, declared target frameworks, Central Package Management, local tool manifests, and common repository configuration files.
+
+```bash
+dotnet-repo-doctor
+```
+
+Use `--json` when the result will be consumed by scripts or coding agents:
+
+```bash
+dotnet-repo-doctor --json
+```
+
+The helper does not restore packages, install tools, change project files, or perform network package audits. Exit code `0` means the diagnostic completed without a blocking problem, `1` means no .NET project or solution artifacts were detected, and `2` means the .NET CLI is unavailable, SDK resolution failed, or the command invocation is invalid.
+
 ### `dotnet-sdk`
 
 Shows the repository SDK configuration and the SDK resolved by the .NET CLI.
@@ -308,7 +325,7 @@ Static validation:
 - shell analysis with ShellCheck;
 - deterministic shell formatting with `shfmt -d -i 2`.
 
-Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, and single/multiple solution handling.
+Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, and read-only .NET repository diagnostics.
 
 A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled.
 

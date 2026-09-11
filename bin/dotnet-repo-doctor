@@ -1,0 +1,343 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: dotnet-repo-doctor [--json] [--help]
+
+Inspect the current .NET repository without modifying it.
+
+Options:
+  --json  Emit machine-readable JSON.
+  --help  Show this help message.
+USAGE
+}
+
+OUTPUT_JSON=false
+
+while (($# > 0)); do
+  case "$1" in
+  --json)
+    OUTPUT_JSON=true
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Error: unsupported argument: $1" >&2
+    usage >&2
+    exit 2
+    ;;
+  esac
+  shift
+done
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+REPOSITORY_NAME="$(basename "$ROOT")"
+
+if BRANCH="$(git -C "$ROOT" symbolic-ref --quiet --short HEAD 2>/dev/null)"; then
+  :
+else
+  BRANCH="(detached)"
+fi
+
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if [[ -n "$(git -C "$ROOT" status --porcelain --untracked-files=normal 2>/dev/null)" ]]; then
+    WORKTREE_DIRTY=true
+  else
+    WORKTREE_DIRTY=false
+  fi
+else
+  BRANCH="(not a git repository)"
+  WORKTREE_DIRTY=false
+fi
+
+GLOBAL_JSON=false
+REQUESTED_SDK=""
+if [[ -f "$ROOT/global.json" ]]; then
+  GLOBAL_JSON=true
+  REQUESTED_SDK="$(
+    awk '
+      /"sdk"[[:space:]]*:/ { in_sdk = 1 }
+      in_sdk && match($0, /"version"[[:space:]]*:[[:space:]]*"[^"]+"/) {
+        value = substr($0, RSTART, RLENGTH)
+        sub(/^.*"version"[[:space:]]*:[[:space:]]*"/, "", value)
+        sub(/"$/, "", value)
+        print value
+        exit
+      }
+      in_sdk && /^[[:space:]]*}/ { exit }
+    ' "$ROOT/global.json"
+  )"
+fi
+
+DOTNET_AVAILABLE=false
+RESOLVED_SDK=""
+DOTNET_RESOLUTION_ERROR=false
+if command -v dotnet >/dev/null 2>&1; then
+  DOTNET_AVAILABLE=true
+  if RESOLVED_SDK="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+    :
+  else
+    RESOLVED_SDK=""
+    DOTNET_RESOLUTION_ERROR=true
+  fi
+fi
+
+DIRECTORY_BUILD_PROPS=false
+[[ -f "$ROOT/Directory.Build.props" ]] && DIRECTORY_BUILD_PROPS=true
+
+DIRECTORY_PACKAGES_PROPS=false
+[[ -f "$ROOT/Directory.Packages.props" ]] && DIRECTORY_PACKAGES_PROPS=true
+
+CENTRAL_PACKAGE_MANAGEMENT=false
+for configuration_file in "$ROOT/Directory.Packages.props" "$ROOT/Directory.Build.props"; do
+  if [[ -f "$configuration_file" ]] && grep -Eiq \
+    '<ManagePackageVersionsCentrally>[[:space:]]*true[[:space:]]*</ManagePackageVersionsCentrally>' \
+    "$configuration_file"; then
+    CENTRAL_PACKAGE_MANAGEMENT=true
+    break
+  fi
+done
+
+LOCAL_TOOL_MANIFEST=false
+[[ -f "$ROOT/.config/dotnet-tools.json" ]] && LOCAL_TOOL_MANIFEST=true
+
+EDITORCONFIG=false
+[[ -f "$ROOT/.editorconfig" ]] && EDITORCONFIG=true
+
+shopt -s nullglob
+SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
+shopt -u nullglob
+
+mapfile -t PROJECTS < <(
+  find "$ROOT" \
+    \( -type d \( \
+    -name .git -o \
+    -name bin -o \
+    -name obj -o \
+    -name node_modules -o \
+    -name artifacts -o \
+    -name .artifacts \
+    \) -prune \) -o \
+    \( -type f \( \
+    -name '*.csproj' -o \
+    -name '*.fsproj' -o \
+    -name '*.vbproj' \
+    \) -print \) | sort
+)
+
+project_is_test() {
+  awk '
+    {
+      content = content " " tolower($0)
+    }
+    END {
+      if (content ~ /<istestproject>[[:space:]]*true[[:space:]]*<\/istestproject>/) {
+        exit 0
+      }
+      if (content ~ /<packagereference[^>]*include[[:space:]]*=[[:space:]]*"(microsoft\.net\.test\.sdk|xunit|nunit|mstest\.testframework)"/) {
+        exit 0
+      }
+      exit 1
+    }
+  ' "$1"
+}
+
+TEST_PROJECT_COUNT=0
+for project in "${PROJECTS[@]}"; do
+  if project_is_test "$project"; then
+    ((TEST_PROJECT_COUNT += 1))
+  fi
+done
+
+mapfile -t DECLARED_FRAMEWORKS < <(
+  {
+    for project in "${PROJECTS[@]}"; do
+      grep -Eo '<TargetFrameworks?>[^<]+</TargetFrameworks?>' "$project" 2>/dev/null || true
+    done
+
+    if [[ -f "$ROOT/Directory.Build.props" ]]; then
+      grep -Eo '<TargetFrameworks?>[^<]+</TargetFrameworks?>' "$ROOT/Directory.Build.props" 2>/dev/null || true
+    fi
+  } |
+    sed -E 's#</?TargetFrameworks?>##g' |
+    tr ';' '\n' |
+    sed '/^[[:space:]]*$/d; s/^[[:space:]]*//; s/[[:space:]]*$//' |
+    sort -u
+)
+
+STATUS="healthy"
+EXIT_CODE=0
+if [[ "$DOTNET_AVAILABLE" == "false" || "$DOTNET_RESOLUTION_ERROR" == "true" ]]; then
+  STATUS="error"
+  EXIT_CODE=2
+elif (("${#PROJECTS[@]}" == 0 && "${#SOLUTIONS[@]}" == 0)); then
+  STATUS="warning"
+  EXIT_CODE=1
+fi
+
+bool_label() {
+  if [[ "$1" == "true" ]]; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+}
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+json_string() {
+  printf '"%s"' "$(json_escape "$1")"
+}
+
+json_array_from_paths() {
+  local root="$1"
+  shift
+  local first=true
+  local item
+
+  printf '['
+  for item in "$@"; do
+    if [[ "$first" == "false" ]]; then
+      printf ','
+    fi
+    first=false
+    json_string "${item#"$root"/}"
+  done
+  printf ']'
+}
+
+json_array_from_values() {
+  local first=true
+  local item
+
+  printf '['
+  for item in "$@"; do
+    if [[ "$first" == "false" ]]; then
+      printf ','
+    fi
+    first=false
+    json_string "$item"
+  done
+  printf ']'
+}
+
+print_joined_values() {
+  local first=true
+  local item
+
+  for item in "$@"; do
+    if [[ "$first" == "false" ]]; then
+      printf ', '
+    fi
+    first=false
+    printf '%s' "$item"
+  done
+  printf '\n'
+}
+
+if [[ "$OUTPUT_JSON" == "true" ]]; then
+  printf '{'
+  printf '"status":'
+  json_string "$STATUS"
+  printf ',"repository":{'
+  printf '"root":'
+  json_string "$ROOT"
+  printf ',"name":'
+  json_string "$REPOSITORY_NAME"
+  printf ',"branch":'
+  json_string "$BRANCH"
+  printf ',"dirty":%s' "$WORKTREE_DIRTY"
+  printf '}'
+  printf ',"dotnet":{'
+  printf '"available":%s' "$DOTNET_AVAILABLE"
+  printf ',"globalJson":%s' "$GLOBAL_JSON"
+  printf ',"requestedSdk":'
+  json_string "$REQUESTED_SDK"
+  printf ',"resolvedSdk":'
+  json_string "$RESOLVED_SDK"
+  printf ',"resolutionError":%s' "$DOTNET_RESOLUTION_ERROR"
+  printf '}'
+  printf ',"solutions":'
+  json_array_from_paths "$ROOT" "${SOLUTIONS[@]}"
+  printf ',"projects":{'
+  printf '"count":%d' "${#PROJECTS[@]}"
+  printf ',"testCount":%d' "$TEST_PROJECT_COUNT"
+  printf ',"declaredFrameworks":'
+  json_array_from_values "${DECLARED_FRAMEWORKS[@]}"
+  printf '}'
+  printf ',"configuration":{'
+  printf '"directoryBuildProps":%s' "$DIRECTORY_BUILD_PROPS"
+  printf ',"directoryPackagesProps":%s' "$DIRECTORY_PACKAGES_PROPS"
+  printf ',"centralPackageManagement":%s' "$CENTRAL_PACKAGE_MANAGEMENT"
+  printf ',"localToolManifest":%s' "$LOCAL_TOOL_MANIFEST"
+  printf ',"editorConfig":%s' "$EDITORCONFIG"
+  printf '}'
+  printf '}\n'
+  exit "$EXIT_CODE"
+fi
+
+printf 'Repository\n'
+printf '%s\n' '----------'
+printf 'Root: %s\n' "$ROOT"
+printf 'Name: %s\n' "$REPOSITORY_NAME"
+printf 'Branch: %s\n' "$BRANCH"
+printf 'Dirty: %s\n' "$(bool_label "$WORKTREE_DIRTY")"
+
+printf '\n.NET\n'
+printf '%s\n' '----'
+printf 'CLI available: %s\n' "$(bool_label "$DOTNET_AVAILABLE")"
+printf 'global.json: %s\n' "$(bool_label "$GLOBAL_JSON")"
+[[ -n "$REQUESTED_SDK" ]] && printf 'Requested SDK: %s\n' "$REQUESTED_SDK"
+if [[ -n "$RESOLVED_SDK" ]]; then
+  printf 'Resolved SDK: %s\n' "$RESOLVED_SDK"
+elif [[ "$DOTNET_AVAILABLE" == "true" ]]; then
+  printf 'Resolved SDK: unavailable (repository SDK resolution failed)\n'
+else
+  printf 'Resolved SDK: unavailable (.NET CLI not found)\n'
+fi
+
+printf '\nSolutions\n'
+printf '%s\n' '---------'
+if (("${#SOLUTIONS[@]}" == 0)); then
+  printf '(none)\n'
+else
+  for solution in "${SOLUTIONS[@]}"; do
+    printf '%s\n' "${solution#"$ROOT"/}"
+  done
+fi
+
+printf '\nProjects\n'
+printf '%s\n' '--------'
+printf 'Total: %d\n' "${#PROJECTS[@]}"
+printf 'Tests: %d\n' "$TEST_PROJECT_COUNT"
+printf 'Declared frameworks: '
+if (("${#DECLARED_FRAMEWORKS[@]}" == 0)); then
+  printf '(none detected)\n'
+else
+  print_joined_values "${DECLARED_FRAMEWORKS[@]}"
+fi
+
+printf '\nConfiguration\n'
+printf '%s\n' '-------------'
+printf 'Directory.Build.props: %s\n' "$(bool_label "$DIRECTORY_BUILD_PROPS")"
+printf 'Directory.Packages.props: %s\n' "$(bool_label "$DIRECTORY_PACKAGES_PROPS")"
+printf 'Central Package Management: %s\n' "$(bool_label "$CENTRAL_PACKAGE_MANAGEMENT")"
+printf 'Local tool manifest: %s\n' "$(bool_label "$LOCAL_TOOL_MANIFEST")"
+printf '.editorconfig: %s\n' "$(bool_label "$EDITORCONFIG")"
+
+printf '\nStatus\n'
+printf '%s\n' '------'
+printf '%s\n' "$STATUS"
+
+exit "$EXIT_CODE"

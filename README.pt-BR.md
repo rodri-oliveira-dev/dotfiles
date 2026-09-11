@@ -45,6 +45,7 @@ dotfiles/
 │   ├── dotfiles-update
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
+│   ├── dotnet-repo-doctor
 │   └── git-root
 ├── git/
 │   └── config
@@ -208,6 +209,22 @@ Exibe o SDK efetivo e detecta convenções comuns a partir da raiz do repositór
 dotnet-context
 ```
 
+### `dotnet-repo-doctor`
+
+Executa um diagnóstico somente leitura do repositório .NET atual a partir de qualquer diretório dentro do worktree Git. Ele informa estado do repositório/branch, SDK solicitado e resolvido, solutions na raiz, quantidade de projetos e projetos de teste, target frameworks declarados, Central Package Management, tool manifest local e arquivos comuns de configuração.
+
+```bash
+dotnet-repo-doctor
+```
+
+Use `--json` quando o resultado for consumido por scripts ou agentes de codificação:
+
+```bash
+dotnet-repo-doctor --json
+```
+
+O helper não restaura pacotes, instala ferramentas, altera arquivos de projeto nem executa auditorias de pacotes pela rede. O exit code `0` indica que o diagnóstico terminou sem problema bloqueante, `1` indica que nenhum artefato de projeto ou solution .NET foi detectado e `2` indica que a CLI do .NET não está disponível, a resolução do SDK falhou ou a chamada do comando é inválida.
+
 ### `dotnet-sdk`
 
 Exibe a configuração de SDK do repositório e o SDK resolvido pela CLI do .NET.
@@ -308,7 +325,7 @@ Validação estática:
 - análise de shell com ShellCheck;
 - formatação determinística com `shfmt -d -i 2`.
 
-A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais e tratamento de uma ou várias solutions.
+A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions e diagnóstico somente leitura de repositórios .NET.
 
 Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
 
