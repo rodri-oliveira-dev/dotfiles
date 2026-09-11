@@ -46,6 +46,9 @@ dotfiles/
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   ├── dotnet-deps
+│   ├── dotnet-items
+│   ├── dotnet-prop
+│   ├── dotnet-props
 │   ├── dotnet-repo-doctor
 │   ├── dotnet-verify
 │   ├── dotnet-why
@@ -64,6 +67,7 @@ dotfiles/
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
+│   ├── msbuild-helpers.bats
 │   ├── update.bats
 │   └── test_helper.bash
 ├── .dockerignore
@@ -229,6 +233,33 @@ The helper resolves the repository SDK before running the diagnostic. With .NET 
 
 The underlying package-list command can contact configured NuGet sources, and .NET 10 can restore automatically when required. The helper never updates package versions. Invalid invocation, unresolved SDK, unsupported JSON output, missing targets, or ambiguous solution selection return exit code `2`; otherwise the .NET CLI command's exit status is preserved.
 
+### MSBuild evaluation helpers
+
+The MSBuild helpers inspect the effective project configuration after MSBuild evaluation. They require .NET SDK 8 or later and do not run build targets. When invoked without a target, they recursively discover `.csproj`, `.fsproj`, and `.vbproj` files while ignoring common generated/build directories. Exactly one project is selected automatically; multiple projects require an explicit target.
+
+`dotnet-prop` returns one evaluated property as plain text:
+
+```bash
+dotnet-prop TargetFramework
+dotnet-prop ManagePackageVersionsCentrally src/MyApp/MyApp.csproj
+```
+
+`dotnet-props` prints a curated diagnostic snapshot including target frameworks, configuration, runtime identifiers, language/nullability settings, warning settings, Central Package Management, lock-file settings, deterministic/CI settings, documentation generation, and output path. Use `--json` to request the same snapshot in one native MSBuild JSON evaluation:
+
+```bash
+dotnet-props
+dotnet-props --json src/MyApp/MyApp.csproj
+```
+
+`dotnet-items` returns evaluated MSBuild items and their metadata using MSBuild's native JSON output:
+
+```bash
+dotnet-items PackageReference
+dotnet-items ProjectReference src/MyApp/MyApp.csproj
+```
+
+These helpers do not restore packages, modify project files, or execute targets. Invalid invocation, unresolved SDK, unsupported SDK, missing projects, invalid targets, or ambiguous project discovery return exit code `2`; otherwise the MSBuild command's status is preserved. In human-readable `dotnet-props` mode, a property-evaluation failure returns `1`.
+
 ### `dotnet-repo-doctor`
 
 Performs a read-only diagnostic of the current .NET repository from any directory inside the Git worktree. It reports repository/branch state, requested and resolved SDKs, root-level solutions, project and test-project counts, declared target frameworks, Central Package Management, local tool manifests, and common repository configuration files.
@@ -372,7 +403,7 @@ Static validation:
 - shell analysis with ShellCheck;
 - deterministic shell formatting with `shfmt -d -i 2`.
 
-Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, the `dotnet-verify` preflight modes and failure behavior, and NuGet dependency health/origin diagnostics across supported SDK command forms.
+Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, the `dotnet-verify` preflight modes and failure behavior, NuGet dependency health/origin diagnostics across supported SDK command forms, and MSBuild property/item evaluation with safe project discovery.
 
 A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled.
 
