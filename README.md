@@ -46,6 +46,7 @@ dotfiles/
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   ├── dotnet-repo-doctor
+│   ├── dotnet-verify
 │   └── git-root
 ├── git/
 │   └── config
@@ -58,6 +59,7 @@ dotfiles/
 ├── tests/
 │   ├── container-smoke.sh
 │   ├── dotnet-helpers.bats
+│   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
 │   ├── update.bats
 │   └── test_helper.bash
@@ -225,6 +227,21 @@ dotnet-repo-doctor --json
 
 The helper does not restore packages, install tools, change project files, or perform network package audits. Exit code `0` means the diagnostic completed without a blocking problem, `1` means no .NET project or solution artifacts were detected, and `2` means the .NET CLI is unavailable, SDK resolution failed, or the command invocation is invalid.
 
+### `dotnet-verify`
+
+Runs a deterministic local preflight before a pull request or push. By default it restores project-local tools when a manifest exists, restores packages, builds without restoring again, verifies formatting without changing files, and runs tests without rebuilding or restoring again.
+
+```bash
+dotnet-verify
+dotnet-verify --quick
+dotnet-verify --no-test
+dotnet-verify MyApp.slnx
+```
+
+`--quick` runs only restore and build. `--full` explicitly selects the default full verification. `--no-format` and `--no-test` skip those individual gates. With exactly one root-level `.sln` or `.slnx`, that solution is selected automatically; multiple solutions require an explicit target.
+
+The helper does not install global tools or modify project configuration. Exit code `0` means every selected verification step passed, `1` means a restore/build/format/test step failed, and `2` means the invocation or environment cannot be resolved safely, such as a missing .NET CLI, incompatible SDK, missing target, or ambiguous solution selection.
+
 ### `dotnet-sdk`
 
 Shows the repository SDK configuration and the SDK resolved by the .NET CLI.
@@ -325,7 +342,7 @@ Static validation:
 - shell analysis with ShellCheck;
 - deterministic shell formatting with `shfmt -d -i 2`.
 
-Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, and read-only .NET repository diagnostics.
+Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, and the `dotnet-verify` preflight modes and failure behavior.
 
 A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled.
 
