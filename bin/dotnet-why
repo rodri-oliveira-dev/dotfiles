@@ -13,8 +13,9 @@ Options:
 
 Target:
   Optional project or solution path. When omitted, a single root-level .sln or
-  .slnx is selected automatically. Multiple root-level solutions require an
-  explicit target.
+  .slnx is selected automatically. If no root solution exists, a single project
+  in the repository is selected. Ambiguous repositories require an explicit
+  target.
 USAGE
 }
 
@@ -112,6 +113,23 @@ shopt -s nullglob
 SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
 shopt -u nullglob
 
+mapfile -t PROJECTS < <(
+  find "$ROOT" \
+    \( -type d \( \
+    -name .git -o \
+    -name bin -o \
+    -name obj -o \
+    -name node_modules -o \
+    -name artifacts -o \
+    -name .artifacts \
+    \) -prune \) -o \
+    \( -type f \( \
+    -name '*.csproj' -o \
+    -name '*.fsproj' -o \
+    -name '*.vbproj' \
+    \) -print \) | sort
+)
+
 print_solution_choices() {
   echo "Multiple solution files were found in the repository root:" >&2
 
@@ -123,6 +141,19 @@ print_solution_choices() {
   echo >&2
   echo "Specify the target explicitly, for example:" >&2
   printf '  dotnet-why %s %s\n' "$PACKAGE" "${SOLUTIONS[0]#"$ROOT"/}" >&2
+}
+
+print_project_choices() {
+  echo "No root-level solution was found and multiple project files exist:" >&2
+
+  local project
+  for project in "${PROJECTS[@]}"; do
+    printf '  - %s\n' "${project#"$ROOT"/}" >&2
+  done
+
+  echo >&2
+  echo "Specify the target explicitly, for example:" >&2
+  printf '  dotnet-why %s %s\n' "$PACKAGE" "${PROJECTS[0]#"$ROOT"/}" >&2
 }
 
 TARGET=""
@@ -139,7 +170,20 @@ if [[ -n "$EXPLICIT_TARGET" ]]; then
   fi
 else
   case "${#SOLUTIONS[@]}" in
-  0) ;;
+  0)
+    case "${#PROJECTS[@]}" in
+    0)
+      TARGET="$ROOT"
+      ;;
+    1)
+      TARGET="${PROJECTS[0]}"
+      ;;
+    *)
+      print_project_choices
+      exit 2
+      ;;
+    esac
+    ;;
   1)
     TARGET="${SOLUTIONS[0]}"
     ;;
@@ -150,11 +194,7 @@ else
   esac
 fi
 
-COMMAND=(nuget why)
-if [[ -n "$TARGET" ]]; then
-  COMMAND+=("$TARGET")
-fi
-COMMAND+=("$PACKAGE")
+COMMAND=(nuget why "$TARGET" "$PACKAGE")
 
 if [[ -n "$FRAMEWORK" ]]; then
   COMMAND+=(--framework "$FRAMEWORK")
