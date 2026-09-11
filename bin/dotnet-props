@@ -38,7 +38,14 @@ while (($# > 0)); do
       usage >&2
       exit 2
     fi
-    EXPLICIT_TARGET="${1:-}"
+    if (($# == 1)); then
+      if [[ -n "$EXPLICIT_TARGET" ]]; then
+        echo "Error: only one target may be specified." >&2
+        usage >&2
+        exit 2
+      fi
+      EXPLICIT_TARGET="$1"
+    fi
     break
     ;;
   -*)
