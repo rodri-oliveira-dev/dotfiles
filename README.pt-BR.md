@@ -46,6 +46,9 @@ dotfiles/
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   ├── dotnet-deps
+│   ├── dotnet-items
+│   ├── dotnet-prop
+│   ├── dotnet-props
 │   ├── dotnet-repo-doctor
 │   ├── dotnet-verify
 │   ├── dotnet-why
@@ -64,6 +67,7 @@ dotfiles/
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
+│   ├── msbuild-helpers.bats
 │   ├── update.bats
 │   └── test_helper.bash
 ├── .dockerignore
@@ -229,6 +233,33 @@ O helper resolve o SDK do repositório antes de executar o diagnóstico. Com .NE
 
 O comando de listagem de pacotes pode consultar as fontes NuGet configuradas, e o .NET 10 pode executar restore automaticamente quando necessário. O helper nunca atualiza versões de pacotes. Chamada inválida, SDK não resolvido, saída JSON sem suporte, alvo inexistente ou seleção ambígua de solution retornam código `2`; nos demais casos, o exit code da CLI do .NET é preservado.
 
+### Helpers de avaliação MSBuild
+
+Os helpers de MSBuild inspecionam a configuração efetiva do projeto após a evaluation do MSBuild. Eles exigem .NET SDK 8 ou posterior e não executam targets de build. Quando chamados sem alvo, procuram recursivamente arquivos `.csproj`, `.fsproj` e `.vbproj`, ignorando diretórios comuns de build e conteúdo gerado. Um único projeto é selecionado automaticamente; múltiplos projetos exigem alvo explícito.
+
+`dotnet-prop` retorna uma única propriedade avaliada como texto simples:
+
+```bash
+dotnet-prop TargetFramework
+dotnet-prop ManagePackageVersionsCentrally src/MinhaApp/MinhaApp.csproj
+```
+
+`dotnet-props` exibe um snapshot de diagnóstico com target frameworks, configuração, runtime identifiers, configurações de linguagem/nullability, warnings, Central Package Management, lock file, configuração determinística/CI, geração de documentação e diretório de saída. Use `--json` para solicitar o mesmo snapshot em uma única evaluation JSON nativa do MSBuild:
+
+```bash
+dotnet-props
+dotnet-props --json src/MinhaApp/MinhaApp.csproj
+```
+
+`dotnet-items` retorna itens avaliados pelo MSBuild e seus metadados usando a saída JSON nativa do MSBuild:
+
+```bash
+dotnet-items PackageReference
+dotnet-items ProjectReference src/MinhaApp/MinhaApp.csproj
+```
+
+Esses helpers não restauram pacotes, não alteram arquivos de projeto e não executam targets. Chamada inválida, SDK não resolvido, SDK sem suporte, ausência de projetos, alvo inválido ou descoberta ambígua retornam código `2`; nos demais casos, o status do MSBuild é preservado. No modo legível para humanos do `dotnet-props`, uma falha na avaliação de uma propriedade retorna `1`.
+
 ### `dotnet-repo-doctor`
 
 Executa um diagnóstico somente leitura do repositório .NET atual a partir de qualquer diretório dentro do worktree Git. Ele informa estado do repositório/branch, SDK solicitado e resolvido, solutions na raiz, quantidade de projetos e projetos de teste, target frameworks declarados, Central Package Management, tool manifest local e arquivos comuns de configuração.
@@ -372,7 +403,7 @@ Validação estática:
 - análise de shell com ShellCheck;
 - formatação determinística com `shfmt -d -i 2`.
 
-A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET, os modos e o comportamento de falha do preflight `dotnet-verify` e os diagnósticos de saúde/origem de dependências NuGet nas formas de comando compatíveis com os SDKs suportados.
+A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET, os modos e o comportamento de falha do preflight `dotnet-verify`, os diagnósticos de saúde/origem de dependências NuGet nas formas de comando compatíveis com os SDKs suportados e a evaluation de propriedades/itens MSBuild com descoberta segura de projeto.
 
 Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
 
