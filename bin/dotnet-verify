@@ -79,12 +79,16 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-if [[ -f "$ROOT/global.json" ]]; then
-  if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+  if [[ -f "$ROOT/global.json" ]]; then
     echo "Error: no compatible .NET SDK could be resolved for $ROOT/global.json." >&2
-    exit 2
+  else
+    echo "Error: no .NET SDK could be resolved. The dotnet host is available, but an SDK is required." >&2
   fi
+  exit 2
+fi
 
+if [[ -f "$ROOT/global.json" ]]; then
   printf 'Resolved SDK: %s\n\n' "$SDK_VERSION"
 fi
 
