@@ -45,8 +45,10 @@ dotfiles/
 │   ├── dotfiles-update
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
+│   ├── dotnet-deps
 │   ├── dotnet-repo-doctor
 │   ├── dotnet-verify
+│   ├── dotnet-why
 │   └── git-root
 ├── git/
 │   └── config
@@ -58,6 +60,7 @@ dotfiles/
 │   └── git.sh
 ├── tests/
 │   ├── container-smoke.sh
+│   ├── dotnet-deps.bats
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
@@ -211,6 +214,21 @@ Displays the effective SDK and detects common repository conventions from the Gi
 dotnet-context
 ```
 
+### `dotnet-deps`
+
+Inspects NuGet dependency health without updating packages or editing project files. Supported diagnostics are `vulnerable`, `outdated`, and `deprecated`; `--include-transitive` adds transitive package references and `--json` requests the stable JSON report format when the resolved SDK supports it.
+
+```bash
+dotnet-deps vulnerable
+dotnet-deps vulnerable --include-transitive --json
+dotnet-deps outdated
+dotnet-deps deprecated MyApp.slnx
+```
+
+The helper resolves the repository SDK before running the diagnostic. With .NET 10 or later it uses `dotnet package list`; with .NET 9 or earlier it uses `dotnet list package`. JSON output requires .NET SDK 7.0.200 or later. With exactly one root-level solution, that target is selected automatically; multiple root-level solutions require an explicit target.
+
+The underlying package-list command can contact configured NuGet sources, and .NET 10 can restore automatically when required. The helper never updates package versions. Invalid invocation, unresolved SDK, unsupported JSON output, missing targets, or ambiguous solution selection return exit code `2`; otherwise the .NET CLI command's exit status is preserved.
+
 ### `dotnet-repo-doctor`
 
 Performs a read-only diagnostic of the current .NET repository from any directory inside the Git worktree. It reports repository/branch state, requested and resolved SDKs, root-level solutions, project and test-project counts, declared target frameworks, Central Package Management, local tool manifests, and common repository configuration files.
@@ -241,6 +259,18 @@ dotnet-verify MyApp.slnx
 `--quick` runs only restore and build. `--full` explicitly selects the default full verification. `--no-format` and `--no-test` skip those individual gates. With exactly one root-level `.sln` or `.slnx`, that solution is selected automatically; multiple solutions require an explicit target.
 
 The helper does not install global tools or modify project configuration. Exit code `0` means every selected verification step passed, `1` means a restore/build/format/test step failed, and `2` means the invocation or environment cannot be resolved safely, such as a missing .NET CLI, incompatible SDK, missing target, or ambiguous solution selection.
+
+### `dotnet-why`
+
+Shows the dependency graph that explains why a NuGet package is present by wrapping `dotnet nuget why`.
+
+```bash
+dotnet-why Microsoft.CodeAnalysis.Common
+dotnet-why Microsoft.CodeAnalysis.Common MyApp.slnx
+dotnet-why --framework net8.0 Microsoft.CodeAnalysis.Common
+```
+
+`dotnet-why` requires .NET SDK 8.0.400 or later. It automatically selects a single root-level solution, requires an explicit target when multiple root-level solutions exist, and supports `--framework`/`-f` to restrict the graph to one target framework. It does not modify the repository. Invalid invocation, unsupported SDKs, missing targets, or ambiguous solution selection return exit code `2`; otherwise the `dotnet nuget why` exit status is preserved.
 
 ### `dotnet-sdk`
 
@@ -342,7 +372,7 @@ Static validation:
 - shell analysis with ShellCheck;
 - deterministic shell formatting with `shfmt -d -i 2`.
 
-Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, and the `dotnet-verify` preflight modes and failure behavior.
+Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, the `dotnet-verify` preflight modes and failure behavior, and NuGet dependency health/origin diagnostics across supported SDK command forms.
 
 A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled.
 
