@@ -101,6 +101,36 @@ setup() {
     "$DOTNET_LOG"
 }
 
+@test "dotnet-why selects the only project when no root solution exists" {
+  mkdir -p "$PROJECT_ROOT/src/App"
+  : >"$PROJECT_ROOT/src/App/App.csproj"
+  export FAKE_DOTNET_VERSION="8.0.400"
+
+  run bash -c 'cd "$1" && "$2" Microsoft.CodeAnalysis.Common' _ \
+    "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-why"
+
+  [ "$status" -eq 0 ]
+  grep -Fxq \
+    "$PROJECT_ROOT|nuget why $PROJECT_ROOT/src/App/App.csproj Microsoft.CodeAnalysis.Common" \
+    "$DOTNET_LOG"
+}
+
+@test "dotnet-why refuses ambiguous projects when no root solution exists" {
+  mkdir -p "$PROJECT_ROOT/src/App" "$PROJECT_ROOT/src/Worker"
+  : >"$PROJECT_ROOT/src/App/App.csproj"
+  : >"$PROJECT_ROOT/src/Worker/Worker.csproj"
+  export FAKE_DOTNET_VERSION="8.0.400"
+
+  run bash -c 'cd "$1" && "$2" Microsoft.CodeAnalysis.Common' _ \
+    "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-why"
+
+  [ "$status" -eq 2 ]
+  assert_contains "$output" "multiple project files exist"
+  assert_contains "$output" "src/App/App.csproj"
+  assert_contains "$output" "src/Worker/Worker.csproj"
+  ! grep -Fq '|nuget why ' "$DOTNET_LOG"
+}
+
 @test "dotnet-why rejects SDKs older than 8.0.400" {
   : >"$PROJECT_ROOT/App.slnx"
   export FAKE_DOTNET_VERSION="8.0.399"
