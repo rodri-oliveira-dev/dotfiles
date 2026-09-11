@@ -46,6 +46,7 @@ dotfiles/
 │   ├── dotnet-bootstrap
 │   ├── dotnet-context
 │   ├── dotnet-repo-doctor
+│   ├── dotnet-verify
 │   └── git-root
 ├── git/
 │   └── config
@@ -58,6 +59,7 @@ dotfiles/
 ├── tests/
 │   ├── container-smoke.sh
 │   ├── dotnet-helpers.bats
+│   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
 │   ├── update.bats
 │   └── test_helper.bash
@@ -225,6 +227,21 @@ dotnet-repo-doctor --json
 
 O helper não restaura pacotes, instala ferramentas, altera arquivos de projeto nem executa auditorias de pacotes pela rede. O exit code `0` indica que o diagnóstico terminou sem problema bloqueante, `1` indica que nenhum artefato de projeto ou solution .NET foi detectado e `2` indica que a CLI do .NET não está disponível, a resolução do SDK falhou ou a chamada do comando é inválida.
 
+### `dotnet-verify`
+
+Executa um preflight local determinístico antes de um pull request ou push. Por padrão, restaura ferramentas locais do projeto quando existe um manifest, restaura pacotes, compila sem restaurar novamente, verifica a formatação sem alterar arquivos e executa os testes sem recompilar nem restaurar outra vez.
+
+```bash
+dotnet-verify
+dotnet-verify --quick
+dotnet-verify --no-test
+dotnet-verify MinhaApp.slnx
+```
+
+`--quick` executa somente restore e build. `--full` seleciona explicitamente a verificação completa, que também é o comportamento padrão. `--no-format` e `--no-test` ignoram individualmente esses gates. Quando existe exatamente um `.sln` ou `.slnx` na raiz, essa solution é selecionada automaticamente; múltiplas solutions exigem um alvo explícito.
+
+O helper não instala ferramentas globais nem altera configurações do projeto. O exit code `0` indica que todas as etapas selecionadas passaram, `1` indica falha em restore/build/format/test e `2` indica que a chamada ou o ambiente não puderam ser resolvidos com segurança, como CLI do .NET ausente, SDK incompatível, alvo inexistente ou seleção ambígua de solution.
+
 ### `dotnet-sdk`
 
 Exibe a configuração de SDK do repositório e o SDK resolvido pela CLI do .NET.
@@ -325,7 +342,7 @@ Validação estática:
 - análise de shell com ShellCheck;
 - formatação determinística com `shfmt -d -i 2`.
 
-A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions e diagnóstico somente leitura de repositórios .NET.
+A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET e os modos e o comportamento de falha do preflight `dotnet-verify`.
 
 Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
 

@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: dotnet-verify [options] [target]
+
+Run a local .NET repository preflight without changing project configuration.
+
+Options:
+  --quick      Restore and build only.
+  --full       Restore, build, verify formatting, and run tests (default).
+  --no-format  Skip dotnet format verification.
+  --no-test    Skip dotnet test.
+  --help       Show this help message.
+
+Target:
+  Optional project or solution path. When omitted, a single root-level .sln or
+  .slnx is selected automatically. Multiple root-level solutions require an
+  explicit target.
+USAGE
+}
+
+RUN_FORMAT=true
+RUN_TESTS=true
+EXPLICIT_TARGET=""
+
+while (($# > 0)); do
+  case "$1" in
+  --quick)
+    RUN_FORMAT=false
+    RUN_TESTS=false
+    ;;
+  --full)
+    RUN_FORMAT=true
+    RUN_TESTS=true
+    ;;
+  --no-format)
+    RUN_FORMAT=false
+    ;;
+  --no-test)
+    RUN_TESTS=false
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    if (($# > 1)); then
+      echo "Error: only one target may be specified." >&2
+      usage >&2
+      exit 2
+    fi
+    EXPLICIT_TARGET="${1:-}"
+    break
+    ;;
+  -*)
+    printf 'Error: unsupported argument: %s\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+  *)
+    if [[ -n "$EXPLICIT_TARGET" ]]; then
+      echo "Error: only one target may be specified." >&2
+      usage >&2
+      exit 2
+    fi
+    EXPLICIT_TARGET="$1"
+    ;;
+  esac
+  shift
+done
+
+if ! command -v dotnet >/dev/null 2>&1; then
+  echo "Error: .NET SDK is not available in PATH." >&2
+  exit 2
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
+  if [[ -f "$ROOT/global.json" ]]; then
+    echo "Error: no compatible .NET SDK could be resolved for $ROOT/global.json." >&2
+  else
+    echo "Error: no .NET SDK could be resolved. The dotnet host is available, but an SDK is required." >&2
+  fi
+  exit 2
+fi
+
+if [[ -f "$ROOT/global.json" ]]; then
+  printf 'Resolved SDK: %s\n\n' "$SDK_VERSION"
+fi
+
+shopt -s nullglob
+SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
+shopt -u nullglob
+
+print_solution_choices() {
+  echo "Multiple solution files were found in the repository root:" >&2
+
+  local solution
+  for solution in "${SOLUTIONS[@]}"; do
+    printf '  - %s\n' "${solution#"$ROOT"/}" >&2
+  done
+
+  echo >&2
+  echo "Specify the target explicitly, for example:" >&2
+  printf '  dotnet-verify %s\n' "${SOLUTIONS[0]#"$ROOT"/}" >&2
+}
+
+TARGET=""
+if [[ -n "$EXPLICIT_TARGET" ]]; then
+  if [[ "$EXPLICIT_TARGET" == /* ]]; then
+    TARGET="$EXPLICIT_TARGET"
+  else
+    TARGET="$ROOT/$EXPLICIT_TARGET"
+  fi
+
+  if [[ ! -e "$TARGET" ]]; then
+    printf 'Error: target does not exist: %s\n' "$EXPLICIT_TARGET" >&2
+    exit 2
+  fi
+else
+  case "${#SOLUTIONS[@]}" in
+  0) ;;
+  1)
+    TARGET="${SOLUTIONS[0]}"
+    ;;
+  *)
+    print_solution_choices
+    exit 2
+    ;;
+  esac
+fi
+
+TARGET_ARGS=()
+if [[ -n "$TARGET" ]]; then
+  TARGET_ARGS+=("$TARGET")
+fi
+
+run_dotnet_step() {
+  local description="$1"
+  shift
+
+  printf '%s...\n' "$description"
+  if ! (cd "$ROOT" && dotnet "$@"); then
+    printf 'Error: %s failed.\n' "$description" >&2
+    exit 1
+  fi
+}
+
+printf 'Verifying .NET repository: %s\n\n' "$ROOT"
+
+if [[ -f "$ROOT/.config/dotnet-tools.json" ]]; then
+  run_dotnet_step "Restoring local .NET tools" tool restore
+fi
+
+run_dotnet_step "Restoring packages" restore "${TARGET_ARGS[@]}"
+run_dotnet_step "Building repository" build "${TARGET_ARGS[@]}" --no-restore
+
+if [[ "$RUN_FORMAT" == "true" ]]; then
+  run_dotnet_step "Verifying formatting" format "${TARGET_ARGS[@]}" --verify-no-changes --no-restore
+fi
+
+if [[ "$RUN_TESTS" == "true" ]]; then
+  run_dotnet_step "Running tests" test "${TARGET_ARGS[@]}" --no-build --no-restore
+fi
+
+printf '\nRepository verification completed successfully.\n'
