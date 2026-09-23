@@ -16,6 +16,8 @@ on:
       - ".dockerignore"
       - ".editorconfig"
       - ".gitattributes"
+      - ".gitleaks.toml"
+      - ".hadolint.yaml"
       - ".github/workflows/validate.yml"
       - ".github/dependabot.yml"
   pull_request:
