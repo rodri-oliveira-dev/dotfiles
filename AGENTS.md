@@ -66,6 +66,15 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Pin third-party GitHub Actions to full commit SHAs; use Dependabot to maintain those pins.
 - Preserve push path filters, concurrency cancellation, and bounded job timeouts unless a concrete requirement justifies changing them; pull requests targeting `main` must not use path filters because the stable required checks must always be reported.
 
+## Trust boundaries for repository-aware .NET commands
+
+- Do not treat a checkout as trusted merely because it is a Git repository or because its files are readable.
+- Before running project-aware .NET commands against external code, inspect repository-controlled inputs such as `global.json`, project files, `Directory.Build.props`, `Directory.Build.targets`, MSBuild imports, `Directory.Packages.props`, `.config/dotnet-tools.json`, and relevant `NuGet.config` files.
+- Plain-text inspection is preferred for unknown repositories. `dotnet msbuild -getProperty/-getItem` performs MSBuild evaluation and is not a passive security sandbox.
+- Treat `dotnet tool restore`, package restore, build, format, and test as operations requiring repository trust because they can access package feeds and/or load repository-controlled build/test tooling.
+- Automated agents must not run MSBuild evaluation, tool/package restore, build, formatting, or tests on untrusted external code unless the task explicitly authorizes execution and the environment is appropriately constrained.
+- For external code, prefer disposable environments without unrelated secrets and restrict network/filesystem permissions where practical. Never imply that these helpers isolate credentials, processes, the filesystem, or the network.
+
 ## Required validation
 
 For shell-related changes, run from the repository root when the environment allows:
