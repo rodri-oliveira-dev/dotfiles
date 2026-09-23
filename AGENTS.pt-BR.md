@@ -48,6 +48,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Preserve a reversibilidade: `uninstall.sh` deve remover somente estado gerenciado pelo repositório e manter intactas configurações não relacionadas do usuário.
 - A instalação nunca deve sobrescrever, remover ou renomear um destino pré-existente não gerenciado; um link simbólico gerenciado só pode ser criado quando o destino estiver ausente ou já apontar exatamente para o alvo esperado.
 - Não substitua o `~/.bashrc` ou o `~/.gitconfig` completos do usuário.
+- Trate o `~/.bashrc` como limite de integridade: recuse links simbólicos/arquivos não regulares, exija marcadores gerenciados exatos, únicos e ordenados e prepare reescritas ao lado do arquivo antes da substituição atômica, preservando as permissões existentes.
 - Preserve configurações injetadas pelo GitHub Codespaces e por outras ferramentas.
 - Nunca execute o instalador ou desinstalador como `root`; execução privilegiada está fora do lifecycle suportado.
 - Configure hooks Git localmente para este repositório; não defina um `core.hooksPath` global durante a instalação dos dotfiles.
