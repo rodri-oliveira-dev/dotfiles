@@ -56,7 +56,8 @@ dotfiles/
 ├── git/
 │   └── config
 ├── lib/
-│   └── dotnet-common.sh
+│   ├── dotnet-common.sh
+│   └── dotnet-props-format.py
 ├── scripts/
 │   ├── install-security-tools
 │   ├── scan-tracked-secrets
