@@ -89,8 +89,8 @@ jobs:
 
           if [[ "$RECOVER_EXISTING_TAG" == "true" ]]; then
             # Recovery never creates, deletes, or updates an existing tag.
-            tag_info="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq '[.object.type, .object.sha] | @tsv')"
-            if [[ "$tag_info" != "$(printf 'commit\\t%s' "$GITHUB_SHA")" ]]; then
+            tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq '.object | select(.type == "commit") | .sha')"
+            if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
               echo "Error: existing tag must directly point to the selected current main commit." >&2
               exit 1
             fi
