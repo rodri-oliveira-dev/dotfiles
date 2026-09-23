@@ -10,6 +10,22 @@ Personal development environment configuration for **.NET**, **Git**, and **GitH
 
 This repository contains only developer-level preferences and helpers. Project-specific requirements remain inside each project repository.
 
+## Quick start
+
+For a fresh Linux/Bash environment, make sure Git and Bash are installed. Run these commands as your regular development user, **not as root**:
+
+```bash
+git clone https://github.com/rodri-oliveira-dev/dotfiles.git "$HOME/dotfiles"
+cd "$HOME/dotfiles"
+./install.sh
+source "$HOME/.bashrc"
+dotfiles-doctor
+```
+
+The installer refuses to overwrite files or symlinks it does not manage. If you already have a `$HOME/dotfiles` directory, choose another clone location instead of replacing it.
+
+To refresh an existing installation, run `dotfiles-update` from the installed environment. To remove only the managed configuration, run `./uninstall.sh` from your dotfiles checkout. See [Lifecycle and diagnostics](#lifecycle-and-diagnostics) for behavior and safety guarantees; for automatic installation in GitHub Codespaces, see [GitHub Codespaces](#github-codespaces).
+
 ## Goals
 
 - Keep Git and shell preferences consistent across development environments.
