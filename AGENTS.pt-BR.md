@@ -70,7 +70,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Preserve filtros de paths no `push`, cancelamento por concurrency e timeouts limitados, salvo quando existir requisito concreto para alterá-los; pull requests voltados à `main` não devem usar filtros de paths, pois os checks obrigatórios estáveis precisam sempre ser reportados.
 
 - Mantenha a publicação manual de releases restrita ao commit atual da `main` e a novas tags SemVer estáveis; nunca reutilize, mova à força ou exclua uma tag existente de release. Somente o job de publicação deve solicitar `contents: write`.
-- O ruleset desejado para tags imutáveis está descrito em `.github/rulesets/immutable-tags.json`; sua ativação exige ação administrativa separada. Proteja todas as tags contra alteração/exclusão sem restringir sua criação inicial e sem atores de bypass.
+- O ruleset para tags imutáveis é distribuído separadamente como `immutable-tags.json` e não é versionado neste repositório; sua ativação exige ação administrativa separada. Proteja todas as tags contra alteração/exclusão sem restringir sua criação inicial e sem atores de bypass.
 
 ## Limites de confiança para comandos .NET orientados ao repositório
 
