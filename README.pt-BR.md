@@ -444,7 +444,7 @@ Arquivos:
 Dockerfile.test
 ```
 
-Pull requests voltados à `main` expõem os nomes estáveis de check `Shell validation` e `Clean container lifecycle`; o ruleset da `main` pode exigir exatamente esses checks depois que esta versão do workflow estiver integrada e passando na `main`.
+Pull requests voltados à `main` expõem os nomes estáveis de check `Shell validation` e `Clean container lifecycle`; o ruleset ativo da `main` exige ambos os checks com enforcement estrito de status checks.
 
 ## Segurança
 
