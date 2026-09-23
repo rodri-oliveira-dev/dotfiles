@@ -444,7 +444,7 @@ Files:
 Dockerfile.test
 ```
 
-Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the `main` ruleset can require those exact checks after this workflow version is merged and passing on `main`.
+Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the active `main` ruleset requires both checks with strict status-check enforcement.
 
 ## Security
 
