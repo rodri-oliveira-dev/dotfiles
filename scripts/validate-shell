@@ -20,11 +20,17 @@ FILES=(
   "$ROOT_DIR/tests/security-scans.sh"
 )
 
-for directory in "$ROOT_DIR/bin" "$ROOT_DIR/lib" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do
+for directory in "$ROOT_DIR/bin" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do
   while IFS= read -r -d '' file; do
     FILES+=("$file")
   done < <(find "$directory" -maxdepth 1 -type f -print0)
 done
+
+# The lib directory contains a Python formatter as well as Bash source files.
+# ShellCheck/shfmt must only inspect the Bash members of this directory.
+while IFS= read -r -d '' file; do
+  FILES+=("$file")
+done < <(find "$ROOT_DIR/lib" -maxdepth 1 -type f -name '*.sh' -print0)
 
 printf 'Validating Bash syntax...\n'
 bash -n "${FILES[@]}"
