@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DOTNET_HELPER_PATH="${BASH_SOURCE[0]}"
+DOTNET_HELPER_HOPS=0
+while [[ -L "$DOTNET_HELPER_PATH" ]]; do
+  ((DOTNET_HELPER_HOPS += 1))
+  if ((DOTNET_HELPER_HOPS > 16)); then
+    echo "Error: too many dotfiles helper symlinks." >&2
+    exit 2
+  fi
+  DOTNET_HELPER_LINK="$(readlink -- "$DOTNET_HELPER_PATH")"
+  if [[ "$DOTNET_HELPER_LINK" == /* ]]; then
+    DOTNET_HELPER_PATH="$DOTNET_HELPER_LINK"
+  else
+    DOTNET_HELPER_PATH="$(dirname -- "$DOTNET_HELPER_PATH")/$DOTNET_HELPER_LINK"
+  fi
+done
+# shellcheck source=lib/dotnet-common.sh
+source "$(cd -- "$(dirname -- "$DOTNET_HELPER_PATH")/../lib" && pwd)/dotnet-common.sh"
+unset DOTNET_HELPER_PATH DOTNET_HELPER_HOPS DOTNET_HELPER_LINK
+
 usage() {
   cat <<'USAGE'
 Usage: dotnet-verify [options] [target]
@@ -72,67 +91,16 @@ while (($# > 0)); do
   shift
 done
 
-if ! command -v dotnet >/dev/null 2>&1; then
-  echo "Error: .NET SDK is not available in PATH." >&2
-  exit 2
-fi
-
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version 2>/dev/null)"; then
-  if [[ -f "$ROOT/global.json" ]]; then
-    echo "Error: no compatible .NET SDK could be resolved for $ROOT/global.json." >&2
-  else
-    echo "Error: no .NET SDK could be resolved. The dotnet host is available, but an SDK is required." >&2
-  fi
-  exit 2
-fi
+dotnet_common_require_host 2
+ROOT="$(dotnet_common_root)"
+dotnet_common_resolve_sdk "$ROOT" "no .NET SDK could be resolved. The dotnet host is available, but an SDK is required."
 
 if [[ -f "$ROOT/global.json" ]]; then
   printf 'Resolved SDK: %s\n\n' "$SDK_VERSION"
 fi
 
-shopt -s nullglob
-SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
-shopt -u nullglob
-
-print_solution_choices() {
-  echo "Multiple solution files were found in the repository root:" >&2
-
-  local solution
-  for solution in "${SOLUTIONS[@]}"; do
-    printf '  - %s\n' "${solution#"$ROOT"/}" >&2
-  done
-
-  echo >&2
-  echo "Specify the target explicitly, for example:" >&2
-  printf '  dotnet-verify %s\n' "${SOLUTIONS[0]#"$ROOT"/}" >&2
-}
-
-TARGET=""
-if [[ -n "$EXPLICIT_TARGET" ]]; then
-  if [[ "$EXPLICIT_TARGET" == /* ]]; then
-    TARGET="$EXPLICIT_TARGET"
-  else
-    TARGET="$ROOT/$EXPLICIT_TARGET"
-  fi
-
-  if [[ ! -e "$TARGET" ]]; then
-    printf 'Error: target does not exist: %s\n' "$EXPLICIT_TARGET" >&2
-    exit 2
-  fi
-else
-  case "${#SOLUTIONS[@]}" in
-  0) ;;
-  1)
-    TARGET="${SOLUTIONS[0]}"
-    ;;
-  *)
-    print_solution_choices
-    exit 2
-    ;;
-  esac
-fi
+dotnet_common_find_solutions "$ROOT"
+dotnet_common_select_solution_target "$ROOT" "$EXPLICIT_TARGET" "dotnet-verify"
 
 TARGET_ARGS=()
 if [[ -n "$TARGET" ]]; then

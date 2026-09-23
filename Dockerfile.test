@@ -8,6 +8,7 @@ WORKDIR /workspace/dotfiles
 
 COPY install.sh uninstall.sh ./
 COPY bin/ ./bin/
+COPY lib/ ./lib/
 COPY git/config ./git/config
 COPY shell/ ./shell/
 COPY tests/container-smoke.sh ./tests/container-smoke.sh

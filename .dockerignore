@@ -10,6 +10,9 @@
 !bin/
 !bin/**
 
+!lib/
+!lib/dotnet-common.sh
+
 !git/
 !git/config
 

@@ -29,7 +29,7 @@ Não assuma que uma ferramenta, workflow, serviço, secret ou dependência exist
 ## Limites do repositório
 
 - Preferências pessoais de shell e aliases pertencem a `shell/`.
-- Pequenos helpers executáveis pertencem a `bin/`.
+- Pequenos helpers executáveis pertencem a `bin/`; funções Bash compartilhadas de uso interno dos helpers .NET pertencem a `lib/dotnet-common.sh`. Preserve os nomes públicos dos comandos, argumentos, saída e contratos de exit code ao alterar a resolução compartilhada.
 - Hooks Git locais deste repositório pertencem a `.githooks/`; eles não devem sobrescrever hooks de repositórios não relacionados.
 - Pontos de entrada compartilhados para validação do repositório pertencem a `scripts/`.
 - Padrões pessoais de Git pertencem a `git/config`.

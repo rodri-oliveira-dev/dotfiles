@@ -18,7 +18,7 @@ create_update_fixture() {
 
   mkdir -p "$SEED_REPO"
   cp "$REPO_ROOT/install.sh" "$REPO_ROOT/uninstall.sh" "$SEED_REPO/"
-  cp -R "$REPO_ROOT/bin" "$REPO_ROOT/git" "$REPO_ROOT/shell" "$REPO_ROOT/scripts" "$REPO_ROOT/.githooks" "$SEED_REPO/"
+  cp -R "$REPO_ROOT/bin" "$REPO_ROOT/lib" "$REPO_ROOT/git" "$REPO_ROOT/shell" "$REPO_ROOT/scripts" "$REPO_ROOT/.githooks" "$SEED_REPO/"
   printf 'initial\n' >"$SEED_REPO/fixture.txt"
 
   "$REAL_GIT" init -q -b main "$SEED_REPO"
