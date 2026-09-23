@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIXTURE_DIR="$(mktemp -d)"
 OUTPUT_FILE="$(mktemp)"
-SYNTHETIC_SECRET="DOTFILES_SYNTHETIC_SECRET_ABCDEFGHIJKLMNOPQRSTUVWX"
+SYNTHETIC_SECRET="DOTFILES_SYNTHETIC_SECRET_$(printf '%s%s' 'ABCDEFGHIJKL' 'MNOPQRSTUVWX')"
 
 cleanup() {
   rm -rf -- "$FIXTURE_DIR"
