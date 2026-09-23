@@ -79,14 +79,14 @@ install_tar_tool() {
   install -m 0755 "$extract_dir/$binary_name" "$DEST_DIR/$binary_name"
 }
 
-install_tar_tool   "gitleaks"   "https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION/$GITLEAKS_ASSET"   "$GITLEAKS_SHA256"   "gitleaks"
+install_tar_tool "gitleaks" "https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION/$GITLEAKS_ASSET" "$GITLEAKS_SHA256" "gitleaks"
 
-install_tar_tool   "actionlint"   "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$ACTIONLINT_ASSET"   "$ACTIONLINT_SHA256"   "actionlint"
+install_tar_tool "actionlint" "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$ACTIONLINT_ASSET" "$ACTIONLINT_SHA256" "actionlint"
 
-install_tar_tool   "zizmor"   "https://github.com/zizmorcore/zizmor/releases/download/v$ZIZMOR_VERSION/$ZIZMOR_ASSET"   "$ZIZMOR_SHA256"   "zizmor"
+install_tar_tool "zizmor" "https://github.com/zizmorcore/zizmor/releases/download/v$ZIZMOR_VERSION/$ZIZMOR_ASSET" "$ZIZMOR_SHA256" "zizmor"
 
 HADOLINT_PATH="$TMP_ROOT/$HADOLINT_ASSET"
-download_verified   "https://github.com/hadolint/hadolint/releases/download/v$HADOLINT_VERSION/$HADOLINT_ASSET"   "$HADOLINT_SHA256"   "$HADOLINT_PATH"
+download_verified "https://github.com/hadolint/hadolint/releases/download/v$HADOLINT_VERSION/$HADOLINT_ASSET" "$HADOLINT_SHA256" "$HADOLINT_PATH"
 install -m 0755 "$HADOLINT_PATH" "$DEST_DIR/hadolint"
 
 printf 'Installed pinned security tools in %s:\n' "$DEST_DIR"
