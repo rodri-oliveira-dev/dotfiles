@@ -1,1 +1,27 @@
-.git
+# Deny by default. Only files required by Dockerfile.test and its lifecycle
+# validation are allowed into the build context. This keeps local .env files,
+# credentials, keys, logs, backups, caches, Git metadata, editor state, and
+# temporary artifacts outside Docker build inputs and layers.
+**
+!Dockerfile.test
+!.dockerignore
+!install.sh
+!uninstall.sh
+
+!bin/
+!bin/**
+
+!git/
+!git/**
+
+!shell/
+!shell/**
+
+!scripts/
+!scripts/**
+
+!tests/
+!tests/**
+
+!.githooks/
+!.githooks/**
