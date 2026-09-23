@@ -12,6 +12,7 @@
 
 !lib/
 !lib/dotnet-common.sh
+!lib/dotnet-props-format.py
 
 !git/
 !git/config
