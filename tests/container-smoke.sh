@@ -3,10 +3,29 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASHRC="$HOME/.bashrc"
+UNMANAGED_BIN="$HOME/.local/bin/dotfiles-doctor"
 
 cd "$REPO_ROOT"
 
 printf 'export USER_SETTING=preserved\n' >"$BASHRC"
+mkdir -p "$HOME/.local/bin"
+printf 'external helper\n' >"$UNMANAGED_BIN"
+
+if ./install.sh >/tmp/conflict-install.log 2>&1; then
+  cat /tmp/conflict-install.log
+  echo "install.sh unexpectedly replaced an unmanaged destination" >&2
+  exit 1
+fi
+
+grep -Fq "refusing to replace unmanaged path" /tmp/conflict-install.log
+[[ "$(cat "$UNMANAGED_BIN")" == "external helper" ]]
+
+if grep -Fq '# >>> rodri-dotfiles >>>' "$BASHRC"; then
+  echo "install.sh modified .bashrc before rejecting an unmanaged destination" >&2
+  exit 1
+fi
+
+rm "$UNMANAGED_BIN"
 
 ./install.sh
 ./install.sh

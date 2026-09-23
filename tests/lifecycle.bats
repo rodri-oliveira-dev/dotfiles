@@ -24,6 +24,16 @@ teardown() {
   fi
 }
 
+assert_no_install_configuration_mutation() {
+  grep -Fq 'export USER_SETTING=preserved' "$HOME/.bashrc"
+  ! grep -Fq '# >>> rodri-dotfiles >>>' "$HOME/.bashrc"
+  ! grep -Fq '# <<< rodri-dotfiles <<<' "$HOME/.bashrc"
+
+  if git config --global --get-all include.path >"$BATS_TEST_TMPDIR/include-paths" 2>/dev/null; then
+    ! grep -Fxq "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig" "$BATS_TEST_TMPDIR/include-paths"
+  fi
+}
+
 @test "install is idempotent and creates stable managed links" {
   run "$REPO_ROOT/install.sh"
   [ "$status" -eq 0 ]
@@ -47,6 +57,129 @@ teardown() {
   for script in "$REPO_ROOT"/bin/*; do
     [ "$(readlink "$HOME/.local/bin/$(basename "$script")")" = "$script" ]
   done
+}
+
+@test "install accepts an existing symlink only when it already points to the managed target" {
+  mkdir -p "$XDG_CONFIG_HOME/rodri-dotfiles"
+  ln -s "$REPO_ROOT/shell/aliases.sh" "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$(readlink "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh")" = "$REPO_ROOT/shell/aliases.sh" ]
+}
+
+@test "install refuses a missing managed target before changing configuration" {
+  incomplete_repo="$BATS_TEST_TMPDIR/incomplete-dotfiles"
+  mkdir -p "$incomplete_repo"
+  cp "$REPO_ROOT/install.sh" "$REPO_ROOT/uninstall.sh" "$incomplete_repo/"
+  cp -R "$REPO_ROOT/bin" "$REPO_ROOT/git" "$REPO_ROOT/shell" "$REPO_ROOT/.githooks" "$incomplete_repo/"
+  rm "$incomplete_repo/shell/aliases.sh"
+
+  run bash "$incomplete_repo/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "missing managed target"
+  assert_contains "$output" "$incomplete_repo/shell/aliases.sh"
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install fails safely if a directory appears at a validated destination before link creation" {
+  fake_bin="$BATS_TEST_TMPDIR/fake-ln-bin"
+  race_marker="$BATS_TEST_TMPDIR/ln-race-triggered"
+  real_ln="$(command -v ln)"
+  mkdir -p "$fake_bin"
+
+  cat >"$fake_bin/ln" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="\${@: -1}"
+
+if [[ "\$destination" == "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]]; then
+  : >"$race_marker"
+  mkdir -p "\$destination"
+fi
+
+exec "$real_ln" "\$@"
+EOF
+  chmod +x "$fake_bin/ln"
+
+  PATH="$fake_bin:$PATH" run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "failed to create managed symlink"
+  [ -f "$race_marker" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh/aliases.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install refuses an unmanaged configuration file before changing shell or Git configuration" {
+  mkdir -p "$XDG_CONFIG_HOME/rodri-dotfiles"
+  printf 'external configuration\n' >"$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to replace unmanaged path"
+  assert_contains "$output" "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
+  [ "$(cat "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh")" = "external configuration" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/dotnet.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install refuses an unmanaged bin directory without deleting its contents" {
+  mkdir -p "$HOME/.local/bin/dotfiles-doctor"
+  printf 'keep-me\n' >"$HOME/.local/bin/dotfiles-doctor/sentinel.txt"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to replace unmanaged path"
+  assert_contains "$output" "$HOME/.local/bin/dotfiles-doctor"
+  [ "$(cat "$HOME/.local/bin/dotfiles-doctor/sentinel.txt")" = "keep-me" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install refuses a broken unmanaged symlink and preserves its target text" {
+  mkdir -p "$XDG_CONFIG_HOME/rodri-dotfiles"
+  broken_target="$HOME/missing external target"
+  ln -s "$broken_target" "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to replace unmanaged symlink"
+  assert_contains "$output" "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
+  [ "$(readlink "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh")" = "$broken_target" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/dotnet.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install supports custom XDG paths and managed filenames containing spaces" {
+  spaced_repo="$BATS_TEST_TMPDIR/dotfiles repo"
+  mkdir -p "$spaced_repo"
+  cp "$REPO_ROOT/install.sh" "$REPO_ROOT/uninstall.sh" "$spaced_repo/"
+  cp -R "$REPO_ROOT/bin" "$REPO_ROOT/git" "$REPO_ROOT/shell" "$REPO_ROOT/.githooks" "$spaced_repo/"
+
+  cat >"$spaced_repo/bin/helper with space" <<'EOF'
+#!/usr/bin/env bash
+printf 'ok\n'
+EOF
+  chmod +x "$spaced_repo/bin/helper with space"
+
+  export XDG_CONFIG_HOME="$HOME/custom config"
+
+  run bash "$spaced_repo/install.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$(readlink "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh")" = "$spaced_repo/shell/aliases.sh" ]
+  [ "$(readlink "$HOME/.local/bin/helper with space")" = "$spaced_repo/bin/helper with space" ]
+
+  run bash "$spaced_repo/install.sh"
+  [ "$status" -eq 0 ]
 }
 
 @test "dotfiles-doctor succeeds after installation" {

@@ -13,14 +13,93 @@ LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 MARKER_BEGIN="# >>> rodri-dotfiles >>>"
 
+declare -a MANAGED_LINK_TARGETS=()
+declare -a MANAGED_LINK_DESTINATIONS=()
+
+add_managed_link() {
+  MANAGED_LINK_TARGETS+=("$1")
+  MANAGED_LINK_DESTINATIONS+=("$2")
+}
+
+validate_managed_directory() {
+  local path="$1"
+
+  if [[ (-e "$path" || -L "$path") && ! -d "$path" ]]; then
+    echo "Error: refusing to use non-directory path: $path" >&2
+    return 1
+  fi
+}
+
+validate_managed_link() {
+  local target="$1"
+  local destination="$2"
+  local actual_target
+
+  if [[ ! -f "$target" ]]; then
+    echo "Error: missing managed target: $target" >&2
+    return 1
+  fi
+
+  if [[ ! -e "$destination" && ! -L "$destination" ]]; then
+    return 0
+  fi
+
+  if [[ -L "$destination" ]]; then
+    actual_target="$(readlink "$destination")"
+
+    if [[ "$actual_target" == "$target" ]]; then
+      return 0
+    fi
+
+    echo "Error: refusing to replace unmanaged symlink: $destination -> $actual_target" >&2
+    echo "Expected managed target: $target" >&2
+    return 1
+  fi
+
+  echo "Error: refusing to replace unmanaged path: $destination" >&2
+  echo "Expected managed target: $target" >&2
+  return 1
+}
+
+create_managed_link() {
+  local target="$1"
+  local destination="$2"
+
+  if [[ -L "$destination" && "$(readlink "$destination")" == "$target" ]]; then
+    return 0
+  fi
+
+  if ! ln -sT -- "$target" "$destination"; then
+    echo "Error: failed to create managed symlink: $destination" >&2
+    echo "Existing paths were not removed; managed links created earlier in this run may remain." >&2
+    return 1
+  fi
+}
+
+add_managed_link "$DOTFILES_DIR/shell/aliases.sh" "$CONFIG_DIR/aliases.sh"
+add_managed_link "$DOTFILES_DIR/shell/dotnet.sh" "$CONFIG_DIR/dotnet.sh"
+add_managed_link "$DOTFILES_DIR/shell/git.sh" "$CONFIG_DIR/git.sh"
+add_managed_link "$DOTFILES_DIR/git/config" "$CONFIG_DIR/gitconfig"
+
+for script in "$DOTFILES_DIR"/bin/*; do
+  [[ -f "$script" ]] || continue
+  add_managed_link "$script" "$LOCAL_BIN/$(basename "$script")"
+done
+
+validate_managed_directory "$CONFIG_DIR"
+validate_managed_directory "$LOCAL_BIN"
+
+for index in "${!MANAGED_LINK_DESTINATIONS[@]}"; do
+  validate_managed_link "${MANAGED_LINK_TARGETS[$index]}" "${MANAGED_LINK_DESTINATIONS[$index]}"
+done
+
 echo "Configuring development environment..."
 
 mkdir -p "$CONFIG_DIR" "$LOCAL_BIN"
 
-ln -sfn "$DOTFILES_DIR/shell/aliases.sh" "$CONFIG_DIR/aliases.sh"
-ln -sfn "$DOTFILES_DIR/shell/dotnet.sh" "$CONFIG_DIR/dotnet.sh"
-ln -sfn "$DOTFILES_DIR/shell/git.sh" "$CONFIG_DIR/git.sh"
-ln -sfn "$DOTFILES_DIR/git/config" "$CONFIG_DIR/gitconfig"
+for index in "${!MANAGED_LINK_DESTINATIONS[@]}"; do
+  create_managed_link "${MANAGED_LINK_TARGETS[$index]}" "${MANAGED_LINK_DESTINATIONS[$index]}"
+done
 
 touch "$BASHRC"
 
@@ -65,12 +144,6 @@ fi
 if git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git -C "$DOTFILES_DIR" config --local core.hooksPath .githooks
 fi
-
-for script in "$DOTFILES_DIR"/bin/*; do
-  [[ -f "$script" ]] || continue
-
-  ln -sfn "$script" "$LOCAL_BIN/$(basename "$script")"
-done
 
 echo
 echo "Development environment configured."

@@ -46,6 +46,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Prefira a menor alteração capaz de resolver o problema.
 - Preserve a idempotência: executar `install.sh` repetidamente não pode duplicar configuração nem corromper o ambiente.
 - Preserve a reversibilidade: `uninstall.sh` deve remover somente estado gerenciado pelo repositório e manter intactas configurações não relacionadas do usuário.
+- A instalação nunca deve sobrescrever, remover ou renomear um destino pré-existente não gerenciado; um link simbólico gerenciado só pode ser criado quando o destino estiver ausente ou já apontar exatamente para o alvo esperado.
 - Não substitua o `~/.bashrc` ou o `~/.gitconfig` completos do usuário.
 - Preserve configurações injetadas pelo GitHub Codespaces e por outras ferramentas.
 - Nunca execute o instalador ou desinstalador como `root`; execução privilegiada está fora do lifecycle suportado.
