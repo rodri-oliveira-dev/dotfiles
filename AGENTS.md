@@ -46,6 +46,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Prefer the smallest change that solves the problem.
 - Preserve idempotency: running `install.sh` repeatedly must not duplicate configuration or corrupt the environment.
 - Preserve reversibility: `uninstall.sh` must remove only repository-managed state and leave unrelated user configuration intact.
+- Installation must never overwrite, remove, or rename a pre-existing unmanaged destination; a managed symlink may be created only when the destination is absent or already points exactly to the expected target.
 - Do not replace the user's complete `~/.bashrc` or `~/.gitconfig`.
 - Preserve settings injected by GitHub Codespaces and other tools.
 - Never run the installer or uninstaller as `root`; privileged execution is outside the supported lifecycle.
