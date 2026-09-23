@@ -32,7 +32,7 @@ cd "$ROOT_DIR"
 printf 'Scanning current revision for secrets with Gitleaks...\n'
 SCAN_TREE="$(mktemp -d)"
 git archive --format=tar HEAD | tar -xf - -C "$SCAN_TREE"
-gitleaks dir   --config "$ROOT_DIR/.gitleaks.toml"   --no-banner   --no-color   --redact=100   --exit-code 1   "$SCAN_TREE"
+gitleaks dir --config "$ROOT_DIR/.gitleaks.toml" --no-banner --no-color --redact=100 --exit-code 1 "$SCAN_TREE"
 
 printf 'Linting GitHub Actions workflows with actionlint...\n'
 actionlint
