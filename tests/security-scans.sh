@@ -3,11 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIXTURE_DIR="$(mktemp -d)"
-OUTPUT_FILE="$FIXTURE_DIR/gitleaks-output.txt"
+OUTPUT_FILE="$(mktemp)"
 SYNTHETIC_SECRET="DOTFILES_SYNTHETIC_SECRET_ABCDEFGHIJKLMNOPQRSTUVWX"
 
 cleanup() {
   rm -rf -- "$FIXTURE_DIR"
+  rm -f -- "$OUTPUT_FILE"
 }
 trap cleanup EXIT
 
