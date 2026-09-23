@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEST_DIR="${SECURITY_TOOLS_DIR:-$HOME/.local/bin}"
+TMP_ROOT="$(mktemp -d)"
+
+cleanup() {
+  rm -rf -- "$TMP_ROOT"
+}
+trap cleanup EXIT
+
+die() {
+  printf 'Error: %s\n' "$*" >&2
+  exit 1
+}
+
+for command_name in curl sha256sum tar install uname; do
+  command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required to install security tools."
+done
+
+case "$(uname -m)" in
+x86_64 | amd64)
+  GITLEAKS_ASSET="gitleaks_8.30.1_linux_x64.tar.gz"
+  GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  ACTIONLINT_ASSET="actionlint_1.7.12_linux_amd64.tar.gz"
+  ACTIONLINT_SHA256="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  ZIZMOR_ASSET="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+  ZIZMOR_SHA256="e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a"
+  HADOLINT_ASSET="hadolint-linux-x86_64"
+  HADOLINT_SHA256="c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507"
+  ;;
+aarch64 | arm64)
+  GITLEAKS_ASSET="gitleaks_8.30.1_linux_arm64.tar.gz"
+  GITLEAKS_SHA256="e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
+  ACTIONLINT_ASSET="actionlint_1.7.12_linux_arm64.tar.gz"
+  ACTIONLINT_SHA256="325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
+  ZIZMOR_ASSET="zizmor-aarch64-unknown-linux-gnu.tar.gz"
+  ZIZMOR_SHA256="7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540"
+  HADOLINT_ASSET="hadolint-linux-arm64"
+  HADOLINT_SHA256="f6198ef8090f404dbb771abfee086eb8c48ac177f30da7fd3510aca35b344b5d"
+  ;;
+*)
+  die "unsupported architecture for pinned security tools: $(uname -m)"
+  ;;
+esac
+
+readonly GITLEAKS_VERSION="8.30.1"
+readonly ACTIONLINT_VERSION="1.7.12"
+readonly ZIZMOR_VERSION="1.30.1"
+readonly HADOLINT_VERSION="2.15.1"
+
+mkdir -p "$DEST_DIR"
+
+download_verified() {
+  local url="$1"
+  local expected_sha256="$2"
+  local output="$3"
+
+  curl --fail --location --silent --show-error "$url" --output "$output"
+
+  if ! printf '%s  %s\n' "$expected_sha256" "$output" | sha256sum --check --status; then
+    die "checksum verification failed for $(basename "$output")"
+  fi
+}
+
+install_tar_tool() {
+  local name="$1"
+  local url="$2"
+  local expected_sha256="$3"
+  local binary_name="$4"
+  local archive="$TMP_ROOT/$name.tar.gz"
+  local extract_dir="$TMP_ROOT/$name"
+
+  mkdir -p "$extract_dir"
+  download_verified "$url" "$expected_sha256" "$archive"
+  tar -xzf "$archive" -C "$extract_dir"
+
+  [[ -f "$extract_dir/$binary_name" ]] || die "$binary_name was not found in the verified $name archive."
+  install -m 0755 "$extract_dir/$binary_name" "$DEST_DIR/$binary_name"
+}
+
+install_tar_tool   "gitleaks"   "https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION/$GITLEAKS_ASSET"   "$GITLEAKS_SHA256"   "gitleaks"
+
+install_tar_tool   "actionlint"   "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$ACTIONLINT_ASSET"   "$ACTIONLINT_SHA256"   "actionlint"
+
+install_tar_tool   "zizmor"   "https://github.com/zizmorcore/zizmor/releases/download/v$ZIZMOR_VERSION/$ZIZMOR_ASSET"   "$ZIZMOR_SHA256"   "zizmor"
+
+HADOLINT_PATH="$TMP_ROOT/$HADOLINT_ASSET"
+download_verified   "https://github.com/hadolint/hadolint/releases/download/v$HADOLINT_VERSION/$HADOLINT_ASSET"   "$HADOLINT_SHA256"   "$HADOLINT_PATH"
+install -m 0755 "$HADOLINT_PATH" "$DEST_DIR/hadolint"
+
+printf 'Installed pinned security tools in %s:\n' "$DEST_DIR"
+printf '  gitleaks %s\n' "$GITLEAKS_VERSION"
+printf '  actionlint %s\n' "$ACTIONLINT_VERSION"
+printf '  zizmor %s\n' "$ZIZMOR_VERSION"
+printf '  hadolint %s\n' "$HADOLINT_VERSION"
