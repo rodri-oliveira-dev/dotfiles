@@ -55,6 +55,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Helpers de atualização devem recusar reconciliação destrutiva: não faça reset, stash ou descarte automático de alterações locais.
 - Coloque variáveis de shell entre aspas, exceto quando a expansão sem aspas for deliberada e segura.
 - Evite comandos destrutivos sem validação rigorosa do alvo.
+- Mantenha builds Docker de teste deny-by-default: não use `COPY . .` amplo; permita somente entradas necessárias ao lifecycle e mantenha secrets locais, credenciais, chaves, logs, backups, caches, metadados Git e arquivos temporários fora das camadas da imagem.
 - Não instale globalmente SDKs, ferramentas, bancos ou serviços específicos de projetos.
 - Não introduza secrets, tokens, URLs privadas, credenciais ou chaves privadas.
 - Mantenha `bin/` versionado; neste repositório ele é código-fonte, não saída de build.
