@@ -10,6 +10,22 @@ Configuração pessoal de ambiente de desenvolvimento para **.NET**, **Git** e *
 
 Este repositório contém apenas preferências e helpers no nível do desenvolvedor. Requisitos específicos continuam pertencendo ao repositório de cada projeto.
 
+## Início rápido
+
+Em um ambiente Linux/Bash novo, confirme que Git e Bash estão instalados. Execute os comandos como seu usuário normal de desenvolvimento, **nunca como root**:
+
+```bash
+git clone https://github.com/rodri-oliveira-dev/dotfiles.git "$HOME/dotfiles"
+cd "$HOME/dotfiles"
+./install.sh
+source "$HOME/.bashrc"
+dotfiles-doctor
+```
+
+O instalador recusa sobrescrever arquivos ou links simbólicos que não gerencia. Se `$HOME/dotfiles` já existir, escolha outro diretório para o clone em vez de substituí-lo.
+
+Para atualizar uma instalação existente, execute `dotfiles-update` no ambiente configurado. Para remover apenas as configurações gerenciadas, execute `./uninstall.sh` a partir do clone dos dotfiles. Consulte [Ciclo de vida e diagnóstico](#ciclo-de-vida-e-diagnóstico) para detalhes e garantias de segurança; para a instalação automática no GitHub Codespaces, consulte [GitHub Codespaces](#github-codespaces).
+
 ## Objetivos
 
 - Manter preferências de Git e shell consistentes entre ambientes de desenvolvimento.
