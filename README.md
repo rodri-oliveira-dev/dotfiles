@@ -286,7 +286,7 @@ dotnet-prop TargetFramework
 dotnet-prop ManagePackageVersionsCentrally src/MyApp/MyApp.csproj
 ```
 
-`dotnet-props` prints a curated diagnostic snapshot including target frameworks, configuration, runtime identifiers, language/nullability settings, warning settings, Central Package Management, lock-file settings, deterministic/CI settings, documentation generation, and output path. Use `--json` to request the same snapshot in one native MSBuild JSON evaluation:
+`dotnet-props` prints a curated diagnostic snapshot including target frameworks, configuration, runtime identifiers, language/nullability settings, warning settings, Central Package Management, lock-file settings, deterministic/CI settings, documentation generation, and output path. Both modes now evaluate all 19 properties in **one** MSBuild invocation. Human-readable output uses Python 3's standard-library JSON parser to validate the full response before formatting; Python 3 must be available in `PATH` for this mode. The command does not install it automatically or add project dependencies. Use `--json` to request the unchanged native MSBuild JSON response **without requiring Python 3**:
 
 ```bash
 dotnet-props
