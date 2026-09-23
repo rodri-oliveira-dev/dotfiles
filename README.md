@@ -463,7 +463,7 @@ The validation workflow is intentionally hardened:
 - repository permissions are read-only;
 - `actions/checkout` is pinned to a full commit SHA and does not persist credentials;
 - the clean-container job runs only after static and Bats validation succeeds;
-- Dependabot checks GitHub Actions dependencies weekly and groups available action updates into a single pull request.
+- Dependabot checks GitHub Actions dependencies weekly, applies a seven-day cooldown to version updates, and groups available action updates into a single pull request.
 
 Files:
 
