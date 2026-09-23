@@ -1,10 +1,9 @@
 # Deny by default. Only files required by Dockerfile.test and its lifecycle
-# validation are allowed into the build context. This keeps local .env files,
-# credentials, keys, logs, backups, caches, Git metadata, editor state, and
-# temporary artifacts outside Docker build inputs and layers.
+# smoke test are allowed into the build context. Local .env files, credentials,
+# keys, logs, backups, caches, Git metadata, editor state, and temporary
+# artifacts remain outside Docker build inputs and image layers.
 **
 !Dockerfile.test
-!.dockerignore
 !install.sh
 !uninstall.sh
 
@@ -12,16 +11,13 @@
 !bin/**
 
 !git/
-!git/**
+!git/config
 
 !shell/
 !shell/**
 
-!scripts/
-!scripts/**
-
 !tests/
-!tests/**
+!tests/container-smoke.sh
 
 !.githooks/
-!.githooks/**
+!.githooks/pre-commit
