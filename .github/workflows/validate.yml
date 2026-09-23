@@ -33,7 +33,7 @@ jobs:
   shell:
     name: Shell validation
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -45,11 +45,19 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bats shellcheck shfmt
+          sudo apt-get install --yes bats curl shellcheck shfmt
+
+      - name: Install pinned security scanners
+        shell: bash
+        run: bash scripts/install-security-tools
 
       - name: Validate shell sources
         shell: bash
         run: bash scripts/validate-shell
+
+      - name: Run security scans
+        shell: bash
+        run: bash scripts/security-scan
 
       - name: Run Bats tests
         shell: bash
