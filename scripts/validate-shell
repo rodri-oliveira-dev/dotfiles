@@ -48,7 +48,7 @@ run_optional_tool() {
 }
 
 printf 'Running ShellCheck...\n'
-run_optional_tool shellcheck "${FILES[@]}"
+run_optional_tool shellcheck -x "${FILES[@]}"
 
 printf 'Checking shell formatting...\n'
 run_optional_tool shfmt -d -i 2 "${FILES[@]}"
