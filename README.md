@@ -57,6 +57,7 @@ dotfiles/
 │   └── config
 ├── scripts/
 │   ├── install-security-tools
+│   ├── scan-tracked-secrets
 │   ├── security-scan
 │   └── validate-shell
 ├── shell/
@@ -463,7 +464,7 @@ The validation workflow is intentionally hardened:
 - repository permissions are read-only;
 - `actions/checkout` is pinned to a full commit SHA and does not persist credentials;
 - the clean-container job runs only after static and Bats validation succeeds;
-- Dependabot checks GitHub Actions dependencies weekly, applies a seven-day cooldown to version updates, and groups available action updates into a single pull request.
+- Dependabot checks GitHub Actions dependencies weekly and groups available action updates into a single pull request.
 
 Files:
 
@@ -481,14 +482,14 @@ The required `Shell validation` check also enforces four security scanners befor
 
 | Scanner | Pinned version | CI scope | Failure policy |
 | --- | ---: | --- | --- |
-| Gitleaks | 8.30.1 | Current committed snapshot only, exported with `git archive`; Git history and `.git` metadata are not scanned by the PR gate. | Any finding fails the check. Output uses 100% secret redaction and no report artifact is uploaded. |
+| Gitleaks | 8.30.1 | All tracked blobs from the current `HEAD` commit, including files marked `export-ignore`; the PR gate does not scan prior Git history, `.git` metadata or external Git LFS payloads. | Any finding fails the check. Output uses 100% secret redaction and no report artifact is uploaded. |
 | actionlint | 1.7.12 | All GitHub Actions workflows discovered in the checkout. | Any syntax/semantic finding fails the check. |
 | zizmor | 1.30.1 | Local repository configuration, including workflows/Dependabot inputs; forced offline with strict input collection. | Any reported audit finding or parse failure fails the check. No GitHub token is supplied. |
 | Hadolint | 2.15.1 | `Dockerfile.test`. | Findings at warning severity or above fail. `DL3008` is explicitly ignored because pinning Ubuntu apt package versions would make the ephemeral smoke-test image brittle against normal repository updates. |
 
 `scripts/install-security-tools` downloads Linux x86_64 or arm64 release binaries and verifies their pinned SHA-256 digests before installation. The CI does not use third-party scanner actions and therefore does not grant scanner-specific GitHub permissions or production secrets. Fork pull requests use the same read-only workflow.
 
-Gitleaks extends its built-in rules with one repository-specific synthetic rule. `tests/security-scans.sh` creates an in-memory/temp-directory fake finding, verifies that Gitleaks exits non-zero, and verifies that the candidate value is not present in scanner output. The fixture contains no real credential and is removed after the test.
+Gitleaks extends its built-in rules with one repository-specific synthetic rule. `tests/security-scans.sh` creates a synthetic finding in temporary directories, confirms exit code 1 and the expected rule identifier rather than an arbitrary scanner error, and verifies that the candidate value is absent from scanner output. A temporary committed Git fixture with `export-ignore` also proves that the production `scripts/scan-tracked-secrets` detects tracked blobs omitted by `git archive`. No real credential is used; the fixtures and captured output are removed after the test.
 
 False-positive handling is intentionally explicit: do not suppress a finding broadly to make CI pass. Prefer fixing the source, narrowing a scanner configuration to the smallest justified rule/path, and documenting the exception in the configuration and pull request.
 
