@@ -22,8 +22,8 @@ trap cleanup EXIT
 printf '%s\n' "$ENV_VALUE" >"$ENV_SENTINEL"
 printf '%s\n' "$LOG_VALUE" >"$LOG_SENTINEL"
 
-git -C "$REPO_ROOT" check-ignore -q "$ENV_SENTINEL"
-git -C "$REPO_ROOT" check-ignore -q "$LOG_SENTINEL"
+git -C "$REPO_ROOT" check-ignore -q -- ".env.docker-context-sentinel"
+git -C "$REPO_ROOT" check-ignore -q -- "docker-context-sentinel.log"
 
 docker build --file "$REPO_ROOT/Dockerfile.test" --tag "$IMAGE_TAG" "$REPO_ROOT"
 
