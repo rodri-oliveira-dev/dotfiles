@@ -1,15 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DOTNET_HELPER_PATH="${BASH_SOURCE[0]}"
+DOTNET_HELPER_HOPS=0
+while [[ -L "$DOTNET_HELPER_PATH" ]]; do
+  ((DOTNET_HELPER_HOPS += 1))
+  if ((DOTNET_HELPER_HOPS > 16)); then
+    echo "Error: too many dotfiles helper symlinks." >&2
+    exit 2
+  fi
+  DOTNET_HELPER_LINK="$(readlink -- "$DOTNET_HELPER_PATH")"
+  if [[ "$DOTNET_HELPER_LINK" == /* ]]; then
+    DOTNET_HELPER_PATH="$DOTNET_HELPER_LINK"
+  else
+    DOTNET_HELPER_PATH="$(dirname -- "$DOTNET_HELPER_PATH")/$DOTNET_HELPER_LINK"
+  fi
+done
+# shellcheck source=../lib/dotnet-common.sh
+source "$(cd -- "$(dirname -- "$DOTNET_HELPER_PATH")/../lib" && pwd)/dotnet-common.sh"
+unset DOTNET_HELPER_PATH DOTNET_HELPER_HOPS DOTNET_HELPER_LINK
+
 echo "Bootstrapping .NET repository..."
 echo
 
-if ! command -v dotnet >/dev/null 2>&1; then
-  echo "Error: .NET SDK is not available in PATH." >&2
-  exit 1
-fi
+dotnet_common_require_host 1
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+ROOT="$(dotnet_common_root)"
 
 if [[ -f "$ROOT/global.json" ]]; then
   if ! SDK_VERSION="$(cd "$ROOT" && dotnet --version)"; then
@@ -28,21 +44,10 @@ if [[ -f "$ROOT/.config/dotnet-tools.json" ]]; then
   echo
 fi
 
-shopt -s nullglob
-SOLUTIONS=("$ROOT"/*.sln "$ROOT"/*.slnx)
-shopt -u nullglob
+dotnet_common_find_solutions "$ROOT"
 
 print_solution_choices() {
-  echo "Multiple solution files were found in the repository root:" >&2
-
-  local solution
-  for solution in "${SOLUTIONS[@]}"; do
-    printf '  - %s\n' "${solution#"$ROOT"/}" >&2
-  done
-
-  echo >&2
-  echo "Specify the target explicitly, for example:" >&2
-  echo "  dotnet-bootstrap ${SOLUTIONS[0]#"$ROOT"/}" >&2
+  dotnet_common_print_solution_choices "$ROOT" "dotnet-bootstrap"
 }
 
 echo "Restoring NuGet packages..."
