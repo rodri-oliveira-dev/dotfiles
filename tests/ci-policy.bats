@@ -47,7 +47,7 @@ setup() {
   grep -Fq '[[ "$GITHUB_SHA" != "$main_sha" ]]' "$release_workflow"
   grep -Fxq "        default: false" "$release_workflow"
   grep -Fxq "        type: boolean" "$release_workflow"
-  grep -Fxq "      RECOVER_EXISTING_TAG: ${{ inputs.recover_existing_tag }}" "$release_workflow"
+  grep -Fxq '      RECOVER_EXISTING_TAG: ${{ inputs.recover_existing_tag }}' "$release_workflow"
   grep -Fq "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" "$release_workflow"
   grep -Fxq "          persist-credentials: false" "$release_workflow"
   grep -Fxq "          fetch-depth: 0" "$release_workflow"
