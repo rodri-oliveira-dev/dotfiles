@@ -63,14 +63,12 @@ if ! git config --global --get-all include.path 2>/dev/null | grep -Fxq "$STABLE
 fi
 
 if git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  chmod +x "$DOTFILES_DIR/.githooks/pre-commit"
   git -C "$DOTFILES_DIR" config --local core.hooksPath .githooks
 fi
 
 for script in "$DOTFILES_DIR"/bin/*; do
   [[ -f "$script" ]] || continue
 
-  chmod +x "$script"
   ln -sfn "$script" "$LOCAL_BIN/$(basename "$script")"
 done
 
