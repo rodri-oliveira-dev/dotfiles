@@ -56,6 +56,8 @@ dotfiles/
 ├── git/
 │   └── config
 ├── scripts/
+│   ├── install-security-tools
+│   ├── security-scan
 │   └── validate-shell
 ├── shell/
 │   ├── aliases.sh
@@ -70,12 +72,15 @@ dotfiles/
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
 │   ├── msbuild-helpers.bats
+│   ├── security-scans.sh
 │   ├── update.bats
 │   └── test_helper.bash
 ├── .dockerignore
 ├── .editorconfig
 ├── .gitattributes
+├── .gitleaks.toml
 ├── .gitignore
+├── .hadolint.yaml
 ├── AGENTS.md
 ├── AGENTS.pt-BR.md
 ├── Dockerfile.test
@@ -454,7 +459,7 @@ The validation workflow is intentionally hardened:
 
 - every pull request targeting `main` runs validation, including documentation-only and `git/config` changes, so required checks are always reported;
 - concurrency cancels older runs for the same ref when a newer commit arrives;
-- shell validation has a five-minute timeout and clean-container validation has a ten-minute timeout;
+- shell/security validation and clean-container validation each have bounded ten-minute timeouts;
 - repository permissions are read-only;
 - `actions/checkout` is pinned to a full commit SHA and does not persist credentials;
 - the clean-container job runs only after static and Bats validation succeeds;
@@ -469,6 +474,36 @@ Dockerfile.test
 ```
 
 Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the active `main` ruleset requires both checks with strict status-check enforcement.
+
+### Security scanning
+
+The required `Shell validation` check also enforces four security scanners before Bats:
+
+| Scanner | Pinned version | CI scope | Failure policy |
+| --- | ---: | --- | --- |
+| Gitleaks | 8.30.1 | Current committed snapshot only, exported with `git archive`; Git history and `.git` metadata are not scanned by the PR gate. | Any finding fails the check. Output uses 100% secret redaction and no report artifact is uploaded. |
+| actionlint | 1.7.12 | All GitHub Actions workflows discovered in the checkout. | Any syntax/semantic finding fails the check. |
+| zizmor | 1.30.1 | Local repository configuration, including workflows/Dependabot inputs; forced offline with strict input collection. | Any reported audit finding or parse failure fails the check. No GitHub token is supplied. |
+| Hadolint | 2.15.1 | `Dockerfile.test`. | Findings at warning severity or above fail. `DL3008` is explicitly ignored because pinning Ubuntu apt package versions would make the ephemeral smoke-test image brittle against normal repository updates. |
+
+`scripts/install-security-tools` downloads Linux x86_64 or arm64 release binaries and verifies their pinned SHA-256 digests before installation. The CI does not use third-party scanner actions and therefore does not grant scanner-specific GitHub permissions or production secrets. Fork pull requests use the same read-only workflow.
+
+Gitleaks extends its built-in rules with one repository-specific synthetic rule. `tests/security-scans.sh` creates an in-memory/temp-directory fake finding, verifies that Gitleaks exits non-zero, and verifies that the candidate value is not present in scanner output. The fixture contains no real credential and is removed after the test.
+
+False-positive handling is intentionally explicit: do not suppress a finding broadly to make CI pass. Prefer fixing the source, narrowing a scanner configuration to the smallest justified rule/path, and documenting the exception in the configuration and pull request.
+
+Run the same security gates locally on supported Linux x86_64/arm64 environments:
+
+```bash
+bash scripts/install-security-tools
+bash scripts/security-scan
+```
+
+For an occasional full-history secret audit, run Gitleaks explicitly against Git history after reviewing the output-handling implications:
+
+```bash
+gitleaks git --config .gitleaks.toml --no-banner --no-color --redact=100 .
+```
 
 ## Security
 
