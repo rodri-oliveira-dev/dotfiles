@@ -62,6 +62,7 @@ dotfiles/
 │   ├── dotnet.sh
 │   └── git.sh
 ├── tests/
+│   ├── ci-policy.bats
 │   ├── container-smoke.sh
 │   ├── docker-context.sh
 │   ├── dotnet-deps.bats
