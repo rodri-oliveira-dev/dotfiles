@@ -1,0 +1,85 @@
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable SemVer version without the v prefix (for example, 1.2.3)"
+        required: true
+        type: string
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  validate:
+    name: Validate release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate version and selected branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Error: run this workflow from the main branch only." >&2
+            exit 1
+          fi
+
+          if [[ ! "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Error: version must be stable SemVer without v (for example, 1.2.3)." >&2
+            exit 1
+          fi
+
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "Error: the selected commit is no longer the current main HEAD." >&2
+            exit 1
+          fi
+
+  publish:
+    name: Create tag and release
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Create a new version tag and publish its release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Recheck immediately before writing, including after any queued run.
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Error: releases must originate from main." >&2
+            exit 1
+          fi
+
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "Error: main moved after this workflow was requested. Start a new run." >&2
+            exit 1
+          fi
+
+          tag="v${RELEASE_VERSION}"
+
+          # GitHub rejects an already existing ref, rather than reusing or moving a tag.
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${tag}" \
+            -f sha="$GITHUB_SHA" >/dev/null
+
+          # Do not allow gh to implicitly create a tag or attach to a different ref.
+          gh release create "$tag" --verify-tag --title "$tag" --generate-notes
