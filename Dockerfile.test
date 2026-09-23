@@ -8,11 +8,10 @@ WORKDIR /workspace/dotfiles
 
 COPY install.sh uninstall.sh ./
 COPY bin/ ./bin/
-COPY git/ ./git/
+COPY git/config ./git/config
 COPY shell/ ./shell/
-COPY scripts/ ./scripts/
-COPY tests/ ./tests/
-COPY .githooks/ ./.githooks/
+COPY tests/container-smoke.sh ./tests/container-smoke.sh
+COPY .githooks/pre-commit ./.githooks/pre-commit
 
 RUN if ./install.sh >/tmp/root-install.log 2>&1; then \
       cat /tmp/root-install.log; \
