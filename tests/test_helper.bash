@@ -31,6 +31,21 @@ printf '%s|%s\n' "$PWD" "$*" >>"${DOTNET_LOG:?}"
 if [[ "${1:-}" == "--version" ]]; then
   printf '%s\n' "${FAKE_DOTNET_VERSION:-10.0.400}"
 fi
+
+if [[ "$*" == *"-getProperty:"*","* ]]; then
+  if [[ -n "${FAKE_MSBUILD_EXIT:-}" ]]; then
+    printf '%s\n' "${FAKE_MSBUILD_RESPONSE:-partial MSBuild output}"
+    exit "$FAKE_MSBUILD_EXIT"
+  fi
+
+  if [[ -n "${FAKE_MSBUILD_RESPONSE+x}" ]]; then
+    printf '%s\n' "$FAKE_MSBUILD_RESPONSE"
+  else
+    cat <<'MSBUILD_JSON'
+{"Properties":{"TargetFramework":"net10.0","TargetFrameworks":"","Configuration":"Debug","Platform":"AnyCPU","RuntimeIdentifier":"","RuntimeIdentifiers":"","LangVersion":"latest","Nullable":"enable","ImplicitUsings":"enable","TreatWarningsAsErrors":"false","WarningsAsErrors":"","NoWarn":"","ManagePackageVersionsCentrally":"false","CentralPackageTransitivePinningEnabled":"false","RestorePackagesWithLockFile":"false","ContinuousIntegrationBuild":"false","Deterministic":"true","GenerateDocumentationFile":"false","OutputPath":"bin/Debug/"}}
+MSBUILD_JSON
+  fi
+fi
 EOF
 
   chmod +x "$FAKE_BIN/dotnet"
