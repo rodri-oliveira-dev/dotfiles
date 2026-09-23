@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly DISTRIBUTION_REMOTE="origin"
+readonly DISTRIBUTION_BRANCH="main"
+readonly DISTRIBUTION_UPSTREAM="$DISTRIBUTION_REMOTE/$DISTRIBUTION_BRANCH"
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 
 if [[ -L "$SCRIPT_PATH" ]]; then
@@ -16,39 +20,126 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOTFILES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if ! command -v git >/dev/null 2>&1; then
-  echo "Error: git is required to update dotfiles." >&2
+die() {
+  echo "Error: $*" >&2
   exit 1
+}
+
+is_official_remote_url() {
+  case "$1" in
+    "https://github.com/rodri-oliveira-dev/dotfiles" |       "https://github.com/rodri-oliveira-dev/dotfiles.git" |       "git@github.com:rodri-oliveira-dev/dotfiles" |       "git@github.com:rodri-oliveira-dev/dotfiles.git" |       "ssh://git@github.com/rodri-oliveira-dev/dotfiles" |       "ssh://git@github.com/rodri-oliveira-dev/dotfiles.git")
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+require_executable_at_revision() {
+  local revision="$1"
+  local path="$2"
+  local mode
+
+  mode="$(git -C "$DOTFILES_DIR" ls-tree "$revision" -- "$path" | awk 'NR == 1 { print $1 }')"
+
+  if [[ "$mode" != "100755" ]]; then
+    die "the fetched revision does not contain executable $path; update was not applied."
+  fi
+}
+
+if ! command -v git >/dev/null 2>&1; then
+  die "git is required to update dotfiles."
 fi
 
 if ! git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "Error: $DOTFILES_DIR is not a Git worktree." >&2
-  exit 1
+  die "$DOTFILES_DIR is not a Git worktree."
 fi
 
 if [[ -n "$(git -C "$DOTFILES_DIR" status --porcelain)" ]]; then
-  echo "Error: dotfiles contains uncommitted changes. Commit or stash them before updating." >&2
-  exit 1
+  die "dotfiles contains uncommitted changes. Commit or stash them before updating."
 fi
 
-if ! git -C "$DOTFILES_DIR" symbolic-ref --quiet HEAD >/dev/null 2>&1; then
-  echo "Error: dotfiles is in detached HEAD state. Switch to a branch before updating." >&2
-  exit 1
+if ! CURRENT_BRANCH="$(git -C "$DOTFILES_DIR" symbolic-ref --quiet --short HEAD)"; then
+  die "dotfiles is in detached HEAD state. Switch to $DISTRIBUTION_BRANCH before updating."
 fi
 
-if ! git -C "$DOTFILES_DIR" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
-  echo "Error: the current dotfiles branch has no upstream configured." >&2
-  exit 1
+if [[ "$CURRENT_BRANCH" != "$DISTRIBUTION_BRANCH" ]]; then
+  die "updates are allowed only from the $DISTRIBUTION_BRANCH distribution branch; current branch is $CURRENT_BRANCH."
 fi
 
-echo "Fetching dotfiles updates..."
-git -C "$DOTFILES_DIR" fetch --prune
+if ! UPSTREAM="$(git -C "$DOTFILES_DIR" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)"; then
+  die "the current dotfiles branch has no upstream configured."
+fi
 
-echo "Applying fast-forward updates only..."
-git -C "$DOTFILES_DIR" pull --ff-only
+if [[ "$UPSTREAM" != "$DISTRIBUTION_UPSTREAM" ]]; then
+  die "the $DISTRIBUTION_BRANCH branch must track $DISTRIBUTION_UPSTREAM; found $UPSTREAM."
+fi
+
+mapfile -t RAW_REMOTE_URLS < <(git -C "$DOTFILES_DIR" config --get-all "remote.$DISTRIBUTION_REMOTE.url")
+
+if (("${#RAW_REMOTE_URLS[@]}" != 1)); then
+  die "$DISTRIBUTION_REMOTE must have exactly one fetch URL."
+fi
+
+RAW_REMOTE_URL="${RAW_REMOTE_URLS[0]}"
+
+if ! is_official_remote_url "$RAW_REMOTE_URL"; then
+  die "$DISTRIBUTION_REMOTE does not point to an authorized dotfiles source: $RAW_REMOTE_URL"
+fi
+
+if ! EFFECTIVE_REMOTE_URL="$(git -C "$DOTFILES_DIR" remote get-url "$DISTRIBUTION_REMOTE" 2>/dev/null)"; then
+  die "unable to resolve the effective URL for $DISTRIBUTION_REMOTE."
+fi
+
+if ! is_official_remote_url "$EFFECTIVE_REMOTE_URL"; then
+  die "the effective $DISTRIBUTION_REMOTE URL is not authorized: $EFFECTIVE_REMOTE_URL"
+fi
+
+if [[ "$RAW_REMOTE_URL" != "$EFFECTIVE_REMOTE_URL" ]]; then
+  die "$DISTRIBUTION_REMOTE URL rewriting is not allowed for dotfiles updates."
+fi
+
+LOCAL_REVISION="$(git -C "$DOTFILES_DIR" rev-parse --verify 'HEAD^{commit}')"
+
+echo "Fetching dotfiles updates from $DISTRIBUTION_UPSTREAM..."
+git -C "$DOTFILES_DIR" -c core.hooksPath=/dev/null fetch --prune "$DISTRIBUTION_REMOTE" "$DISTRIBUTION_BRANCH"
+
+if ! REMOTE_REVISION="$(git -C "$DOTFILES_DIR" rev-parse --verify "refs/remotes/$DISTRIBUTION_UPSTREAM^{commit}" 2>/dev/null)"; then
+  die "unable to resolve the fetched $DISTRIBUTION_UPSTREAM revision."
+fi
+
+if ! FETCHED_REVISION="$(git -C "$DOTFILES_DIR" rev-parse --verify 'FETCH_HEAD^{commit}' 2>/dev/null)"; then
+  die "unable to resolve FETCH_HEAD after fetching $DISTRIBUTION_UPSTREAM."
+fi
+
+if [[ "$FETCHED_REVISION" != "$REMOTE_REVISION" ]]; then
+  die "fetched revision does not match $DISTRIBUTION_UPSTREAM; update was not applied."
+fi
+
+if ! git -C "$DOTFILES_DIR" merge-base --is-ancestor "$LOCAL_REVISION" "$REMOTE_REVISION"; then
+  die "$DISTRIBUTION_UPSTREAM is not a fast-forward from the current revision; update was not applied."
+fi
+
+require_executable_at_revision "$REMOTE_REVISION" "install.sh"
+require_executable_at_revision "$REMOTE_REVISION" "bin/dotfiles-doctor"
+
+echo "Applying validated fast-forward update..."
+git -C "$DOTFILES_DIR" -c core.hooksPath=/dev/null merge --ff-only "$REMOTE_REVISION"
+
+APPLIED_REVISION="$(git -C "$DOTFILES_DIR" rev-parse --verify 'HEAD^{commit}')"
+
+if [[ "$APPLIED_REVISION" != "$REMOTE_REVISION" ]]; then
+  die "HEAD does not match the validated revision after fast-forward; refusing to run updated scripts."
+fi
 
 echo "Refreshing managed configuration..."
-"$DOTFILES_DIR/install.sh"
+if "$DOTFILES_DIR/install.sh"; then
+  :
+else
+  INSTALL_STATUS=$?
+  echo "Error: install.sh failed after applying validated revision $REMOTE_REVISION; diagnostics were not run." >&2
+  exit "$INSTALL_STATUS"
+fi
 
 echo "Running environment diagnostics..."
 "$DOTFILES_DIR/bin/dotfiles-doctor"
