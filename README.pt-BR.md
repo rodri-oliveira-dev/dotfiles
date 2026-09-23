@@ -57,6 +57,7 @@ dotfiles/
 │   └── config
 ├── scripts/
 │   ├── install-security-tools
+│   ├── scan-tracked-secrets
 │   ├── security-scan
 │   └── validate-shell
 ├── shell/
@@ -463,7 +464,7 @@ O workflow de validação é deliberadamente endurecido:
 - as permissões do repositório são somente leitura;
 - `actions/checkout` fica fixado em um commit SHA completo e não persiste credenciais;
 - o job de container limpo executa somente depois que validação estática e Bats passam;
-- o Dependabot verifica semanalmente dependências do GitHub Actions, aplica cooldown de sete dias às atualizações de versão e agrupa atualizações disponíveis em um único pull request.
+- o Dependabot verifica semanalmente dependências do GitHub Actions e agrupa atualizações disponíveis em um único pull request.
 
 Arquivos:
 
@@ -481,14 +482,14 @@ O check obrigatório `Shell validation` também executa quatro scanners de segur
 
 | Scanner | Versão fixada | Escopo no CI | Política de falha |
 | --- | ---: | --- | --- |
-| Gitleaks | 8.30.1 | Apenas o snapshot commitado atual, exportado com `git archive`; o gate de PR não varre histórico Git nem metadados `.git`. | Qualquer finding falha o check. A saída usa redaction de 100% do segredo e nenhum relatório é enviado como artefato. |
+| Gitleaks | 8.30.1 | Todos os blobs rastreados no commit `HEAD` atual, inclusive arquivos com `export-ignore`; o gate de PR não varre histórico Git anterior, metadados `.git` nem payloads externos do Git LFS. | Qualquer finding falha o check. A saída usa redaction de 100% do segredo e nenhum relatório é enviado como artefato. |
 | actionlint | 1.7.12 | Todos os workflows do GitHub Actions encontrados no checkout. | Qualquer finding sintático/semântico falha o check. |
 | zizmor | 1.30.1 | Configuração local do repositório, incluindo workflows/Dependabot; execução forçada offline com coleta estrita. | Qualquer finding de auditoria ou falha de parsing bloqueia o check. Nenhum token GitHub é fornecido. |
 | Hadolint | 2.15.1 | `Dockerfile.test`. | Findings de severidade warning ou superior falham. `DL3008` é ignorada explicitamente porque fixar versões dos pacotes apt do Ubuntu deixaria a imagem efêmera de smoke test frágil diante de atualizações normais do repositório. |
 
 `scripts/install-security-tools` baixa os binários de release Linux x86_64 ou arm64 e verifica os digests SHA-256 fixados antes da instalação. O CI não usa actions de terceiros para os scanners e, portanto, não concede permissões GitHub específicas nem secrets de produção a eles. Pull requests de forks usam o mesmo workflow somente leitura.
 
-O Gitleaks estende as regras padrão com uma única regra sintética específica do repositório. `tests/security-scans.sh` cria um finding fictício em diretório temporário, verifica que o Gitleaks retorna código diferente de zero e confirma que o valor candidato não aparece na saída do scanner. O fixture não contém credencial real e é removido após o teste.
+O Gitleaks estende as regras padrão com uma única regra sintética específica do repositório. `tests/security-scans.sh` cria um finding sintético em diretórios temporários, confirma o exit code 1 e o identificador de regra esperado, em vez de aceitar qualquer erro do scanner, e verifica que o valor candidato não aparece na saída. Um fixture Git temporário commitado com `export-ignore` também comprova que o fluxo real de `scripts/scan-tracked-secrets` detecta blobs rastreados omitidos por `git archive`. Nenhuma credencial real é usada; os fixtures e a saída capturada são removidos após o teste.
 
 O tratamento de falso positivo é deliberadamente explícito: não suprima findings de forma ampla apenas para fazer o CI passar. Prefira corrigir a origem, restringir a configuração do scanner ao menor rule/path justificável e documentar a exceção na configuração e no pull request.
 
