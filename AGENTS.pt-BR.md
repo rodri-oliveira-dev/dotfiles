@@ -66,6 +66,15 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Fixe GitHub Actions de terceiros por commit SHA completo; use Dependabot para manter esses pins.
 - Preserve filtros de paths no `push`, cancelamento por concurrency e timeouts limitados, salvo quando existir requisito concreto para alterá-los; pull requests voltados à `main` não devem usar filtros de paths, pois os checks obrigatórios estáveis precisam sempre ser reportados.
 
+## Limites de confiança para comandos .NET orientados ao repositório
+
+- Não trate um checkout como confiável apenas por ser um repositório Git ou por seus arquivos estarem legíveis.
+- Antes de executar comandos .NET que entendem o projeto em código externo, revise entradas controladas pelo repositório como `global.json`, arquivos de projeto, `Directory.Build.props`, `Directory.Build.targets`, imports MSBuild, `Directory.Packages.props`, `.config/dotnet-tools.json` e arquivos `NuGet.config` relevantes.
+- Prefira inspeção textual em repositórios desconhecidos. `dotnet msbuild -getProperty/-getItem` realiza avaliação MSBuild e não é uma sandbox passiva de segurança.
+- Trate `dotnet tool restore`, restore de pacotes, build, format e test como operações que exigem confiança no repositório, pois podem acessar feeds e/ou carregar tooling de build/test controlado pelo projeto.
+- Agentes automatizados não devem executar avaliação MSBuild, restore de ferramentas/pacotes, build, formatação ou testes em código externo não confiável sem autorização explícita da tarefa e um ambiente adequadamente restrito.
+- Para código externo, prefira ambientes descartáveis sem secrets não relacionados e restrinja permissões de rede/filesystem quando viável. Nunca sugira que esses helpers isolam credenciais, processos, filesystem ou rede.
+
 ## Validação obrigatória
 
 Para mudanças relacionadas a shell, execute a partir da raiz quando o ambiente permitir:
