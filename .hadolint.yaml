@@ -1,0 +1,6 @@
+failure-threshold: warning
+
+# Dockerfile.test is an ephemeral Ubuntu smoke-test image. Pinning apt package
+# versions would make the test brittle against normal Ubuntu repository updates.
+ignored:
+  - DL3008
