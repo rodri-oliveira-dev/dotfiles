@@ -32,19 +32,37 @@ docker run --rm "$IMAGE_TAG" sh -c '
   test ! -e /workspace/dotfiles/docker-context-sentinel.log
 '
 
+check_saved_layers_absent() {
+  local sentinel="$1"
+  local label="$2"
+  local candidate
+  local inspected_layers=0
+
+  while IFS= read -r -d '' candidate; do
+    if ! tar -tf "$candidate" >/dev/null 2>&1; then
+      continue
+    fi
+
+    inspected_layers=$((inspected_layers + 1))
+
+    if tar -xOf "$candidate" 2>/dev/null | grep -aF -- "$sentinel" >/dev/null; then
+      echo "Error: $label leaked into a saved image layer." >&2
+      return 1
+    fi
+  done < <(find "$SAVE_DIR/extracted" -type f -print0)
+
+  if ((inspected_layers == 0)); then
+    echo "Error: no saved image layers could be inspected." >&2
+    return 1
+  fi
+}
+
 SAVE_DIR="$(mktemp -d)"
 docker save --output "$SAVE_DIR/image.tar" "$IMAGE_TAG"
 mkdir "$SAVE_DIR/extracted"
 tar -xf "$SAVE_DIR/image.tar" -C "$SAVE_DIR/extracted"
 
-if grep -aR -Fq -- "$ENV_VALUE" "$SAVE_DIR/extracted"; then
-  echo "Error: fictitious .env sentinel leaked into a saved image layer." >&2
-  exit 1
-fi
-
-if grep -aR -Fq -- "$LOG_VALUE" "$SAVE_DIR/extracted"; then
-  echo "Error: Git-ignored log sentinel leaked into a saved image layer." >&2
-  exit 1
-fi
+check_saved_layers_absent "$ENV_VALUE" "fictitious .env sentinel"
+check_saved_layers_absent "$LOG_VALUE" "Git-ignored log sentinel"
 
 printf 'Docker context hardening test completed successfully.\n'
