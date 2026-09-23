@@ -55,6 +55,8 @@ dotfiles/
 │   └── git-root
 ├── git/
 │   └── config
+├── lib/
+│   └── dotnet-common.sh
 ├── scripts/
 │   ├── install-security-tools
 │   ├── scan-tracked-secrets
@@ -68,6 +70,7 @@ dotfiles/
 │   ├── ci-policy.bats
 │   ├── container-smoke.sh
 │   ├── docker-context.sh
+│   ├── dotnet-common.bats
 │   ├── dotnet-deps.bats
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
@@ -208,6 +211,8 @@ Para repositórios externos ou ainda não confiáveis:
 - exija uma decisão humana explícita antes de uma automação executar avaliação MSBuild, restore de ferramentas/pacotes, build, formatação ou testes.
 
 Os helpers preservam intencionalmente suas interfaces não interativas. Eles não adicionam prompts e não alegam fornecer isolamento de processo, filesystem, credenciais ou rede.
+
+Os sete helpers executáveis que inspecionam repositórios .NET compartilham a biblioteca Bash de uso interno `lib/dotnet-common.sh` para descoberta da raiz Git, verificação do SDK, descoberta de solutions/projetos e resolução de caminhos. Os comandos públicos preservam seus parsers de argumentos e as diferenças intencionais de seleção de alvo. Os helpers resolvem seu próprio caminho antes de carregar a biblioteca, inclusive por links gerenciados em `~/.local/bin`. Mantenha `lib/` junto de `bin/` ao copiar o repositório de dotfiles.
 
 ## Comandos .NET
 
