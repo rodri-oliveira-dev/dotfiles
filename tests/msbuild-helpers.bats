@@ -161,7 +161,7 @@ setup() {
   [ "$(grep -c '|msbuild ' "$DOTNET_LOG")" -eq 1 ]
   grep -Fq "$PROJECT_ROOT|msbuild $PROJECT_ROOT/src/My App/My App.csproj -getProperty:TargetFramework,TargetFrameworks,Configuration,Platform,RuntimeIdentifier,RuntimeIdentifiers,LangVersion,Nullable,ImplicitUsings,TreatWarningsAsErrors,WarningsAsErrors,NoWarn,ManagePackageVersionsCentrally,CentralPackageTransitivePinningEnabled,RestorePackagesWithLockFile,ContinuousIntegrationBuild,Deterministic,GenerateDocumentationFile,OutputPath -nologo" "$DOTNET_LOG"
 
-  actual_labels="$(printf '%s\n' "$output" | grep -E '^[A-Za-z]+:' | sed 's/:.*//' | paste -sd, -)"
+  actual_labels="$(printf '%s\n' "$output" | grep -E '^[A-Za-z]+:' | grep -v '^Project:' | sed 's/:.*//' | paste -sd, -)"
   expected_labels='TargetFramework,TargetFrameworks,Configuration,Platform,RuntimeIdentifier,RuntimeIdentifiers,LangVersion,Nullable,ImplicitUsings,TreatWarningsAsErrors,WarningsAsErrors,NoWarn,ManagePackageVersionsCentrally,CentralPackageTransitivePinningEnabled,RestorePackagesWithLockFile,ContinuousIntegrationBuild,Deterministic,GenerateDocumentationFile,OutputPath'
   [ "$actual_labels" = "$expected_labels" ]
 }
