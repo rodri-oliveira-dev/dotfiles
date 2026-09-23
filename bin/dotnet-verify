@@ -91,7 +91,7 @@ while (($# > 0)); do
   shift
 done
 
-dotnet_common_require_host
+dotnet_common_require_host 2
 ROOT="$(dotnet_common_root)"
 dotnet_common_resolve_sdk "$ROOT" "no .NET SDK could be resolved. The dotnet host is available, but an SDK is required."
 
