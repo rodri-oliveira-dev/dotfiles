@@ -53,6 +53,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Never run the installer or uninstaller as `root`; privileged execution is outside the supported lifecycle.
 - Configure Git hooks locally for this repository; do not set a global `core.hooksPath` as part of dotfiles installation.
 - Update helpers must refuse destructive reconciliation: do not reset, stash, or discard local changes automatically.
+- Treat remote updates as a trust boundary: `dotfiles-update` must stay restricted to the documented `main`/`origin/main` distribution route, official repository URLs, validated fast-forward revisions, and hook-disabled fetch/merge operations before updated scripts execute.
 - Quote shell variables unless unquoted expansion is deliberate and safe.
 - Avoid destructive commands unless the target is tightly validated.
 - Keep Docker test builds deny-by-default: do not use broad `COPY . .`; allow only required lifecycle inputs and keep local secrets, credentials, keys, logs, backups, caches, Git metadata, and temporary files outside image layers.
