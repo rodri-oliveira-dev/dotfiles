@@ -7,6 +7,11 @@ on:
         description: "Stable SemVer version without the v prefix (for example, 1.2.3)"
         required: true
         type: string
+      recover_existing_tag:
+        description: "Complete a release for an existing tag pointing to this exact main commit"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: publish-release
@@ -56,7 +61,13 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_VERSION: ${{ inputs.version }}
+      RECOVER_EXISTING_TAG: ${{ inputs.recover_existing_tag }}
     steps:
+      - name: Checkout repository for GitHub CLI
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Create a new version tag and publish its release
         shell: bash
         run: |
@@ -76,10 +87,26 @@ jobs:
 
           tag="v${RELEASE_VERSION}"
 
-          # GitHub rejects an already existing ref, rather than reusing or moving a tag.
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-            -f ref="refs/tags/${tag}" \
-            -f sha="$GITHUB_SHA" >/dev/null
+          if [[ "$RECOVER_EXISTING_TAG" == "true" ]]; then
+            # Recovery never creates, deletes, or updates an existing tag.
+            tag_info="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" --jq '[.object.type, .object.sha] | @tsv')"
+            if [[ "$tag_info" != "$(printf 'commit\\t%s' "$GITHUB_SHA")" ]]; then
+              echo "Error: existing tag must directly point to the selected current main commit." >&2
+              exit 1
+            fi
 
-          # Do not allow gh to implicitly create a tag or attach to a different ref.
-          gh release create "$tag" --verify-tag --title "$tag" --generate-notes
+            # An existing release must not be overwritten. The create call below
+            # independently refuses a duplicate if this check races another writer.
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Error: a release already exists for $tag." >&2
+              exit 1
+            fi
+          else
+            # A fresh release must never reuse or move an existing tag.
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${tag}" \
+              -f sha="$GITHUB_SHA" >/dev/null
+          fi
+
+          # Never create a missing tag implicitly or publish at an unexpected ref.
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$tag" --generate-notes
