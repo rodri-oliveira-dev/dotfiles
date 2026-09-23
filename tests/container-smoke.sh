@@ -19,7 +19,12 @@ fi
 
 grep -Fq "refusing to replace unmanaged path" /tmp/conflict-install.log
 [[ "$(cat "$UNMANAGED_BIN")" == "external helper" ]]
-! grep -Fq '# >>> rodri-dotfiles >>>' "$BASHRC"
+
+if grep -Fq '# >>> rodri-dotfiles >>>' "$BASHRC"; then
+  echo "install.sh modified .bashrc before rejecting an unmanaged destination" >&2
+  exit 1
+fi
+
 rm "$UNMANAGED_BIN"
 
 ./install.sh
