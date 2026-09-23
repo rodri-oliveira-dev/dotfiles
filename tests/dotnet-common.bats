@@ -14,7 +14,7 @@ setup() {
 
   run bash -c 'cd "$1" && "$2" App.slnx --ignore-failed-sources' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-bootstrap"
   [ "$status" -eq 0 ]
-  grep -Fq "$PROJECT_ROOT|restore $PROJECT_ROOT/App.slnx --ignore-failed-sources" "$DOTNET_LOG"
+  grep -Fq "$PROJECT_ROOT/src/nested|restore $PROJECT_ROOT/App.slnx --ignore-failed-sources" "$DOTNET_LOG"
 
   run bash -c 'cd "$1" && "$2" vulnerable App.slnx' _ "$PROJECT_ROOT/src/nested" "$REPO_ROOT/bin/dotnet-deps"
   [ "$status" -eq 0 ]
