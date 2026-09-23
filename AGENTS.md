@@ -29,7 +29,7 @@ Do not assume a tool, workflow, service, secret, or dependency exists unless it 
 ## Repository boundaries
 
 - Personal shell preferences and aliases belong in `shell/`.
-- Small executable helpers belong in `bin/`.
+- Small executable helpers belong in `bin/`; shared source-only Bash primitives for .NET helpers belong in `lib/dotnet-common.sh`. Preserve the public command names, arguments, output and exit-code contracts when updating common resolution logic.
 - Repository-local Git hooks belong in `.githooks/`; they must not override hooks in unrelated repositories.
 - Shared repository validation entry points belong in `scripts/`.
 - Personal Git defaults belong in `git/config`.
