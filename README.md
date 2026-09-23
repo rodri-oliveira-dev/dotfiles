@@ -63,6 +63,7 @@ dotfiles/
 │   └── git.sh
 ├── tests/
 │   ├── container-smoke.sh
+│   ├── docker-context.sh
 │   ├── dotnet-deps.bats
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
@@ -407,7 +408,7 @@ Static validation:
 
 Behavioral validation uses Bats and covers installation idempotency, stable configuration links, Git include and repository-hook management, doctor/uninstall behavior, safe `dotfiles-update` behavior, repository-root discovery, local .NET tool restore, single/multiple solution handling, read-only .NET repository diagnostics, the `dotnet-verify` preflight modes and failure behavior, NuGet dependency health/origin diagnostics across supported SDK command forms, and MSBuild property/item evaluation with safe project discovery.
 
-A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled.
+A clean Ubuntu container additionally verifies that installation is rejected for `root`, succeeds and remains idempotent for a normal user, configures repository hooks, passes `dotfiles-doctor`, and can be safely uninstalled. The Docker test context is deny-by-default: only lifecycle inputs are allowed, and a dedicated sentinel test verifies that fictitious local `.env`/log files do not appear in the final filesystem or saved image layers.
 
 Run locally after installing `bats`, `shellcheck`, and `shfmt`:
 
@@ -415,6 +416,7 @@ Run locally after installing `bats`, `shellcheck`, and `shfmt`:
 bash scripts/validate-shell
 bats tests
 docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
+bash tests/docker-context.sh
 ```
 
 These tools are development/CI dependencies only; `install.sh` does not install them into the personal environment.
