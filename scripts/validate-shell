@@ -20,7 +20,7 @@ FILES=(
   "$ROOT_DIR/tests/security-scans.sh"
 )
 
-for directory in "$ROOT_DIR/bin" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do
+for directory in "$ROOT_DIR/bin" "$ROOT_DIR/lib" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do
   while IFS= read -r -d '' file; do
     FILES+=("$file")
   done < <(find "$directory" -maxdepth 1 -type f -print0)
