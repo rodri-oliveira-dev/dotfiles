@@ -116,6 +116,7 @@ O instalador foi projetado para ser idempotente e deve ser executado pelo usuár
 - migra o `include.path` Git original, relativo ao repositório, para a localização estável;
 - disponibiliza os scripts de `bin/` por meio de `~/.local/bin`;
 - recusa substituir caminhos pré-existentes de configuração ou de `~/.local/bin`, exceto quando já forem exatamente os links simbólicos gerenciados esperados por este repositório;
+- aceita apenas um `~/.bashrc` regular e que não seja link simbólico; os marcadores gerenciados devem ser linhas exatas, únicas e ordenadas, e as mudanças são preparadas em arquivo temporário no mesmo diretório antes da substituição atômica, preservando as permissões existentes;
 - configura o `core.hooksPath` local deste repositório para `.githooks`, sem alterar o caminho global de hooks utilizado pelos outros repositórios.
 
 Ele deliberadamente **não** substitui o `~/.bashrc` ou o `~/.gitconfig` completos, evitando sobrescrever configurações criadas pelo Codespaces ou por outras ferramentas.
