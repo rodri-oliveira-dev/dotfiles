@@ -19,7 +19,7 @@ command -v gitleaks >/dev/null 2>&1 || {
 
 printf 'fixture = "%s"\n' "$SYNTHETIC_SECRET" >"$FIXTURE_DIR/fixture.txt"
 
-if gitleaks dir   --config "$ROOT_DIR/.gitleaks.toml"   --no-banner   --no-color   --redact=100   --exit-code 1   "$FIXTURE_DIR" >"$OUTPUT_FILE" 2>&1; then
+if gitleaks dir --config "$ROOT_DIR/.gitleaks.toml" --no-banner --no-color --redact=100 --exit-code 1 "$FIXTURE_DIR" >"$OUTPUT_FILE" 2>&1; then
   echo "Error: Gitleaks did not block the synthetic secret fixture." >&2
   exit 1
 fi
