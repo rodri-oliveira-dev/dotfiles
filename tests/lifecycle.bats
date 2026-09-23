@@ -69,6 +69,50 @@ assert_no_install_configuration_mutation() {
   [ "$(readlink "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh")" = "$REPO_ROOT/shell/aliases.sh" ]
 }
 
+@test "install refuses a missing managed target before changing configuration" {
+  incomplete_repo="$BATS_TEST_TMPDIR/incomplete-dotfiles"
+  mkdir -p "$incomplete_repo"
+  cp "$REPO_ROOT/install.sh" "$REPO_ROOT/uninstall.sh" "$incomplete_repo/"
+  cp -R "$REPO_ROOT/bin" "$REPO_ROOT/git" "$REPO_ROOT/shell" "$REPO_ROOT/.githooks" "$incomplete_repo/"
+  rm "$incomplete_repo/shell/aliases.sh"
+
+  run bash "$incomplete_repo/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "missing managed target"
+  assert_contains "$output" "$incomplete_repo/shell/aliases.sh"
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_install_configuration_mutation
+}
+
+@test "install fails safely if a directory appears at a validated destination before link creation" {
+  fake_bin="$BATS_TEST_TMPDIR/fake-ln-bin"
+  real_ln="$(command -v ln)"
+  mkdir -p "$fake_bin"
+
+  cat >"$fake_bin/ln" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="${@: -1}"
+
+if [[ "$destination" == "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]]; then
+  mkdir -p "$destination"
+fi
+
+exec "$real_ln" "$@"
+EOF
+  chmod +x "$fake_bin/ln"
+
+  PATH="$fake_bin:$PATH" run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "failed to create managed symlink"
+  [ -d "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh/aliases.sh" ]
+  assert_no_install_configuration_mutation
+}
+
 @test "install refuses an unmanaged configuration file before changing shell or Git configuration" {
   mkdir -p "$XDG_CONFIG_HOME/rodri-dotfiles"
   printf 'external configuration\n' >"$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh"
