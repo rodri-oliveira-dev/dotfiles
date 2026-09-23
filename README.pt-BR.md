@@ -179,6 +179,30 @@ Hook e CI compartilham o mesmo ponto de entrada de validação:
 bash scripts/validate-shell
 ```
 
+## Limites de confiança dos helpers .NET
+
+Esses helpers são atalhos de conveniência, não uma sandbox de segurança. O fato de um repositório ser um Git worktree não torna confiáveis seus arquivos de projeto, imports, fontes de pacotes, ferramentas, lógica de build ou testes.
+
+| Grupo de helpers | O que faz | Efeitos relevantes / limite de confiança | Nível de confiança recomendado |
+| --- | --- | --- | --- |
+| `dotnet-context`, `dotnet-repo-doctor`, `dotnet-sdk`, `dotnet-tools`, `dotnet-solutions` | Lê metadados e configuração do repositório; alguns comandos também invocam o host .NET para informações de SDK/ferramentas. | Esses helpers não solicitam explicitamente restore de pacotes, build ou testes. Ainda assim, `global.json` e metadados de ferramentas pertencem ao repositório de destino, e invocar `dotnet` não equivale a uma inspeção puramente textual. | Adequado para repositórios que você aceita inspecionar com o host .NET instalado. Para código desconhecido, prefira primeiro inspeção de arquivos em texto. |
+| `dotnet-prop`, `dotnet-props`, `dotnet-items` | Invoca `dotnet msbuild` para avaliar propriedades/itens sem executar intencionalmente um target de build. | A avaliação MSBuild carrega arquivos de projeto, resolução de SDK e imports como `Directory.Build.props`/`Directory.Build.targets` e outros imports. “Sem build” não significa avaliação isolada ou segura de projeto não confiável. | Trate o repositório e suas entradas MSBuild como confiáveis antes de executar. |
+| `dotnet-deps`, `dotnet-why` | Consulta informações de pacotes/dependências pela CLI .NET. | Pode avaliar metadados do projeto e usar assets de restore existentes. `dotnet-deps` pode acessar fontes NuGet configuradas e, em SDKs compatíveis, realizar restore automaticamente. Credenciais de package sources e acesso de rede podem entrar no escopo. | Use somente após revisar fontes/configuração de pacotes e decidir que o repositório pode ser consultado com suas credenciais/rede. |
+| `dotnet-bootstrap` | Executa restore de ferramentas locais quando existe manifest e depois restaura pacotes NuGet. | Pode acessar feeds, consumir `NuGet.config`, restaurar dependências, avaliar lógica MSBuild de restore e baixar ferramentas locais declaradas pelo repositório. | Somente repositórios confiáveis. Revise manifests e fontes de pacotes antes do uso. |
+| `dotnet-verify` | Restaura ferramentas/pacotes, compila, opcionalmente verifica formatação e executa testes. | Build/test podem carregar tasks MSBuild, analyzers, source generators, tooling de formatação e código de testes fornecidos pelo repositório. Isso é execução de código com filesystem, ambiente, rede e credenciais do usuário atual, salvo restrições impostas pelo ambiente externo. | Somente repositórios confiáveis; para código externo, execute apenas após revisão/aprovação explícita em ambiente restrito. |
+
+Entradas controladas pelo projeto incluem pelo menos `global.json`, arquivos de projeto/solution, `Directory.Build.props`, `Directory.Build.targets`, outros imports MSBuild, `Directory.Packages.props`, `.config/dotnet-tools.json` e arquivos `NuGet.config` do repositório/usuário. Revise as entradas relevantes antes de restore, avaliação MSBuild, build, formatação ou execução de testes.
+
+Para repositórios externos ou ainda não confiáveis:
+
+- prefira inspeção textual (`cat`, `grep`, `find`, revisão de código) antes de invocar ferramentas que entendem o projeto;
+- use container, VM ou Codespace descartável sem secrets pessoais, do repositório ou de cloud;
+- restrinja permissões de filesystem e acesso de rede quando for viável;
+- evite expor feeds NuGet autenticados ou outras credenciais de package sources até revisar o repositório e sua configuração;
+- exija uma decisão humana explícita antes de uma automação executar avaliação MSBuild, restore de ferramentas/pacotes, build, formatação ou testes.
+
+Os helpers preservam intencionalmente suas interfaces não interativas. Eles não adicionam prompts e não alegam fornecer isolamento de processo, filesystem, credenciais ou rede.
+
 ## Comandos .NET
 
 ### Aliases
