@@ -16,8 +16,8 @@ while [[ -L "$DOTNET_HELPER_PATH" ]]; do
     DOTNET_HELPER_PATH="$(dirname -- "$DOTNET_HELPER_PATH")/$DOTNET_HELPER_LINK"
   fi
 done
-# shellcheck source=lib/dotnet-common.sh
 DOTNET_PROPS_SOURCE="$DOTNET_HELPER_PATH"
+# shellcheck source=lib/dotnet-common.sh
 source "$(cd -- "$(dirname -- "$DOTNET_HELPER_PATH")/../lib" && pwd)/dotnet-common.sh"
 unset DOTNET_HELPER_PATH DOTNET_HELPER_HOPS DOTNET_HELPER_LINK
 
