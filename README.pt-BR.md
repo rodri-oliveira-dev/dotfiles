@@ -56,6 +56,8 @@ dotfiles/
 ├── git/
 │   └── config
 ├── scripts/
+│   ├── install-security-tools
+│   ├── security-scan
 │   └── validate-shell
 ├── shell/
 │   ├── aliases.sh
@@ -70,12 +72,15 @@ dotfiles/
 │   ├── dotnet-verify.bats
 │   ├── lifecycle.bats
 │   ├── msbuild-helpers.bats
+│   ├── security-scans.sh
 │   ├── update.bats
 │   └── test_helper.bash
 ├── .dockerignore
 ├── .editorconfig
 ├── .gitattributes
+├── .gitleaks.toml
 ├── .gitignore
+├── .hadolint.yaml
 ├── AGENTS.md
 ├── AGENTS.pt-BR.md
 ├── Dockerfile.test
@@ -454,7 +459,7 @@ O workflow de validação é deliberadamente endurecido:
 
 - todo pull request voltado à `main` executa a validação, inclusive mudanças somente em documentação e `git/config`, garantindo que os checks obrigatórios sempre sejam reportados;
 - concurrency cancela execuções antigas da mesma ref quando chega um commit mais novo;
-- a validação de shell possui timeout de cinco minutos e a validação em container limpo possui timeout de dez minutos;
+- as validações de shell/segurança e de container limpo possuem timeouts limitados de dez minutos;
 - as permissões do repositório são somente leitura;
 - `actions/checkout` fica fixado em um commit SHA completo e não persiste credenciais;
 - o job de container limpo executa somente depois que validação estática e Bats passam;
@@ -469,6 +474,36 @@ Dockerfile.test
 ```
 
 Pull requests voltados à `main` expõem os nomes estáveis de check `Shell validation` e `Clean container lifecycle`; o ruleset ativo da `main` exige ambos os checks com enforcement estrito de status checks.
+
+### Varreduras de segurança
+
+O check obrigatório `Shell validation` também executa quatro scanners de segurança antes do Bats:
+
+| Scanner | Versão fixada | Escopo no CI | Política de falha |
+| --- | ---: | --- | --- |
+| Gitleaks | 8.30.1 | Apenas o snapshot commitado atual, exportado com `git archive`; o gate de PR não varre histórico Git nem metadados `.git`. | Qualquer finding falha o check. A saída usa redaction de 100% do segredo e nenhum relatório é enviado como artefato. |
+| actionlint | 1.7.12 | Todos os workflows do GitHub Actions encontrados no checkout. | Qualquer finding sintático/semântico falha o check. |
+| zizmor | 1.30.1 | Configuração local do repositório, incluindo workflows/Dependabot; execução forçada offline com coleta estrita. | Qualquer finding de auditoria ou falha de parsing bloqueia o check. Nenhum token GitHub é fornecido. |
+| Hadolint | 2.15.1 | `Dockerfile.test`. | Findings de severidade warning ou superior falham. `DL3008` é ignorada explicitamente porque fixar versões dos pacotes apt do Ubuntu deixaria a imagem efêmera de smoke test frágil diante de atualizações normais do repositório. |
+
+`scripts/install-security-tools` baixa os binários de release Linux x86_64 ou arm64 e verifica os digests SHA-256 fixados antes da instalação. O CI não usa actions de terceiros para os scanners e, portanto, não concede permissões GitHub específicas nem secrets de produção a eles. Pull requests de forks usam o mesmo workflow somente leitura.
+
+O Gitleaks estende as regras padrão com uma única regra sintética específica do repositório. `tests/security-scans.sh` cria um finding fictício em diretório temporário, verifica que o Gitleaks retorna código diferente de zero e confirma que o valor candidato não aparece na saída do scanner. O fixture não contém credencial real e é removido após o teste.
+
+O tratamento de falso positivo é deliberadamente explícito: não suprima findings de forma ampla apenas para fazer o CI passar. Prefira corrigir a origem, restringir a configuração do scanner ao menor rule/path justificável e documentar a exceção na configuração e no pull request.
+
+Execute os mesmos gates localmente em Linux x86_64/arm64 suportado:
+
+```bash
+bash scripts/install-security-tools
+bash scripts/security-scan
+```
+
+Para uma auditoria ocasional do histórico completo, execute Gitleaks explicitamente sobre o histórico após considerar as implicações de saída/log:
+
+```bash
+gitleaks git --config .gitleaks.toml --no-banner --no-color --redact=100 .
+```
 
 ## Segurança
 
