@@ -1,0 +1,10 @@
+title = "dotfiles secret scanning policy"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "dotfiles-synthetic-secret"
+description = "Synthetic fixture used to prove the CI secret gate fails closed"
+regex = '''DOTFILES_SYNTHETIC_SECRET_[A-Z0-9]{24}'''
+keywords = ["DOTFILES_SYNTHETIC_SECRET_"]
