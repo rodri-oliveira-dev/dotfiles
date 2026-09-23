@@ -256,6 +256,10 @@ EOF
   [ "$(grep -Fxc '# <<< rodri-dotfiles <<<' "$HOME/.bashrc")" -eq 1 ]
   grep -Fq '# Documentation example: # >>> rodri-dotfiles >>>' "$HOME/.bashrc"
 
+  run "$HOME/.local/bin/dotfiles-doctor"
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "Failures: 0"
+
   run "$REPO_ROOT/uninstall.sh"
 
   [ "$status" -eq 0 ]
