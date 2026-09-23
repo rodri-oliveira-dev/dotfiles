@@ -519,11 +519,11 @@ O workflow `Publish release` (`.github/workflows/release.yml`) é acionado **som
 
 O workflow recusa execução fora da `main`, versões inválidas (inclusive pré-release e metadados de build), commit selecionado desatualizado e nomes de tags já criados. As publicações são serializadas e não são canceladas automaticamente. Apenas o job de publicação recebe `contents: write`; não são necessários actions de terceiros, PAT ou secret adicional. **Não execute a primeira release antes da ativação do ruleset de tags abaixo.**
 
-A configuração desejada do ruleset está versionada em [`.github/rulesets/immutable-tags.json`](.github/rulesets/immutable-tags.json), mas versionar esse arquivo **não ativa** uma regra administrativa no GitHub. Um administrador precisa primeiro confirmar que `Immutable tags` ainda não existe em **Settings → Rules → Rulesets** e criar um **novo ruleset de tags** com: nome `Immutable tags`, enforcement `Active`, alvo **todas as tags**, **Restrict updates** e **Restrict deletions** habilitados, **Restrict creations** desabilitado e lista de bypass vazia. A operação equivalente via API, executada uma única vez com GitHub CLI autenticado e permissão Administration: write, é:
+A configuração desejada do ruleset está disponível separadamente para download como `immutable-tags.json` e, intencionalmente, **não está versionada** neste repositório. Baixe o arquivo antes de executar o comando abaixo. Ter o arquivo localmente **não ativa** uma regra administrativa no GitHub. Um administrador precisa primeiro confirmar que `Immutable tags` ainda não existe em **Settings → Rules → Rulesets** e criar um **novo ruleset de tags** com: nome `Immutable tags`, enforcement `Active`, alvo **todas as tags**, **Restrict updates** e **Restrict deletions** habilitados, **Restrict creations** desabilitado e lista de bypass vazia. A operação equivalente via API, executada uma única vez com GitHub CLI autenticado e permissão Administration: write, é:
 
 ```bash
 gh api --method POST repos/rodri-oliveira-dev/dotfiles/rulesets \
-  --input .github/rulesets/immutable-tags.json
+  --input immutable-tags.json
 ```
 
 Confira no GitHub que o ruleset foi criado e está ativo antes de publicar. Ele protege todas as tags contra alterações e exclusões, sem impedir a criação das novas versões pelo workflow. Administradores ainda podem modificar ou desativar o próprio ruleset; a proteção não é absoluta contra mudanças administrativas na política. [Documentação oficial de regras para tags](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets).
