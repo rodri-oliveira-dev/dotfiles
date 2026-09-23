@@ -69,6 +69,9 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Keep zizmor offline in CI and do not grant scanner-specific tokens or write permissions. Treat scanner exceptions as narrow, documented policy decisions rather than blanket suppressions.
 - Preserve push path filters, concurrency cancellation, and bounded job timeouts unless a concrete requirement justifies changing them; pull requests targeting `main` must not use path filters because the stable required checks must always be reported.
 
+- Keep manual release publishing restricted to the current `main` commit and new stable SemVer tags; never reuse, force-move, or delete an existing release tag. Only the release job may request `contents: write`.
+- The immutable-tag ruleset is distributed separately as `immutable-tags.json` and is not stored in this repository; it requires a separate administrative action. Protect all tags from update/deletion without restricting first creation, and do not register bypass actors.
+
 ## Trust boundaries for repository-aware .NET commands
 
 - Do not treat a checkout as trusted merely because it is a Git repository or because its files are readable.

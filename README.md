@@ -39,6 +39,7 @@ dotfiles/
 ├── .github/
 │   ├── dependabot.yml
 │   └── workflows/
+│       ├── release.yml
 │       └── validate.yml
 ├── bin/
 │   ├── dotfiles-doctor
@@ -511,6 +512,23 @@ For an occasional full-history secret audit, run Gitleaks explicitly against Git
 ```bash
 gitleaks git --config .gitleaks.toml --no-banner --no-color --redact=100 .
 ```
+
+## Manual releases and immutable tags
+
+The `Publish release` workflow (`.github/workflows/release.yml`) is triggered **manually only**. After its pull request is merged, open **Actions → Publish release → Run workflow**, select `main`, and enter a stable SemVer version **without** the `v` prefix, for example `1.0.0`. The workflow creates a new lightweight tag `v1.0.0` at the current `main` commit and publishes a GitHub Release with automatically generated notes. It does not build or upload binaries.
+
+The workflow rejects non-`main` runs, malformed versions (including prerelease/build metadata), stale selected commits, and previously created tag names. Publication runs are serialized and are not automatically canceled. Only the publishing job receives `contents: write`; no external action, PAT, or repository secret is needed. **Do not execute the first release until the tag ruleset below is active.**
+
+The desired tag ruleset is supplied separately as a downloadable `immutable-tags.json` file; it is intentionally **not committed** to this repository. Download it before using the command below. Merely possessing this file does **not** install an administrative GitHub ruleset. An administrator must first check that `Immutable tags` is absent in **Settings → Rules → Rulesets**, then create a **new tag ruleset** with: name `Immutable tags`, enforcement `Active`, target **all tags**, **Restrict updates** and **Restrict deletions** enabled, **Restrict creations** disabled, and an empty bypass list. The equivalent one-time API operation (requires a GitHub CLI login with repository Administration: write) is:
+
+```bash
+gh api --method POST repos/rodri-oliveira-dev/dotfiles/rulesets \
+  --input immutable-tags.json
+```
+
+Verify the created ruleset in GitHub Settings before releasing. This protects all tags, including the first version, against subsequent moves and deletions while allowing the release workflow to create new version tags. Repository administrators can still change or disable the ruleset itself; this is not an absolute guarantee against an administrator changing repository policy. [GitHub tag rules documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets).
+
+If the tag is created but release publication fails, **do not delete or move the tag**. Verify that it points to the intended commit, then complete the release for that existing tag with `gh release create vX.Y.Z --verify-tag --title vX.Y.Z --generate-notes` using an appropriately authorized account. Rerunning the workflow for that version intentionally fails because the tag already exists. The tag ruleset protects Git tags; it does not, by itself, make release descriptions or assets immutable.
 
 ## Security
 
