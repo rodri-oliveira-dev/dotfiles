@@ -155,7 +155,9 @@ Update an existing clone safely:
 dotfiles-update
 ```
 
-`dotfiles-update` refuses to run when the worktree contains uncommitted changes, when the repository is in detached HEAD state, or when the current branch has no upstream. It fetches remote changes, applies only a fast-forward pull, reruns `install.sh`, and finishes with `dotfiles-doctor`. It never resets, stashes, or discards local work automatically.
+`dotfiles-update` treats the update source as a trust boundary. It runs only from the `main` distribution branch tracking `origin/main`, and `origin` must resolve without URL rewriting to this repository's official GitHub HTTPS or SSH URL. After a hook-disabled fetch, the helper verifies that `FETCH_HEAD` is exactly `origin/main`, that the target is a fast-forward from the current revision, and that the fetched revision still contains executable `install.sh` and `bin/dotfiles-doctor`. Only then does it apply the fast-forward with Git hooks disabled, verify that `HEAD` matches the validated revision, run the updated installer, and finish with `dotfiles-doctor`. It never resets, stashes, or discards local work automatically.
+
+This policy authenticates the configured distribution route; it does **not** claim that Git transport or GitHub's UI "Verified" badge proves the fetched code is benign. Commit/tag signature enforcement is not enabled because this repository currently has no local signing trust root that can be verified consistently in Codespaces/Linux clones. Repository rules and required CI protect changes entering `main`, while the updater independently restricts which remote/branch it will execute.
 
 Remove only configuration owned by this repository:
 
@@ -442,7 +444,7 @@ Files:
 Dockerfile.test
 ```
 
-Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the `main` ruleset can require those exact checks after this workflow version is merged and passing on `main`.
+Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the active `main` ruleset requires both checks with strict status-check enforcement.
 
 ## Security
 

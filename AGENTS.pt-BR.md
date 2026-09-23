@@ -53,6 +53,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Nunca execute o instalador ou desinstalador como `root`; execução privilegiada está fora do lifecycle suportado.
 - Configure hooks Git localmente para este repositório; não defina um `core.hooksPath` global durante a instalação dos dotfiles.
 - Helpers de atualização devem recusar reconciliação destrutiva: não faça reset, stash ou descarte automático de alterações locais.
+- Trate atualizações remotas como limite de confiança: `dotfiles-update` deve permanecer restrito à rota de distribuição documentada `main`/`origin/main`, URLs oficiais do repositório, revisões fast-forward validadas e operações de fetch/merge com hooks desabilitados antes de executar scripts atualizados.
 - Coloque variáveis de shell entre aspas, exceto quando a expansão sem aspas for deliberada e segura.
 - Evite comandos destrutivos sem validação rigorosa do alvo.
 - Mantenha builds Docker de teste deny-by-default: não use `COPY . .` amplo; permita somente entradas necessárias ao lifecycle e mantenha secrets locais, credenciais, chaves, logs, backups, caches, metadados Git e arquivos temporários fora das camadas da imagem.

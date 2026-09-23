@@ -155,7 +155,9 @@ Atualize com segurança um clone existente:
 dotfiles-update
 ```
 
-O `dotfiles-update` se recusa a executar quando o worktree possui alterações não commitadas, quando o repositório está em detached HEAD ou quando a branch atual não possui upstream. Ele busca alterações remotas, aplica somente um pull fast-forward, executa novamente o `install.sh` e termina com `dotfiles-doctor`. O comando nunca executa reset, stash ou descarte automático de trabalho local.
+O `dotfiles-update` trata a origem da atualização como um limite de confiança. Ele executa somente a partir da branch de distribuição `main`, rastreando `origin/main`, e o `origin` precisa resolver sem reescrita de URL para a URL oficial HTTPS ou SSH deste repositório no GitHub. Depois de um fetch com hooks desabilitados, o helper verifica que `FETCH_HEAD` corresponde exatamente a `origin/main`, que a revisão alvo é um fast-forward da revisão atual e que a revisão buscada ainda contém `install.sh` e `bin/dotfiles-doctor` executáveis. Somente então aplica o fast-forward com hooks Git desabilitados, confirma que `HEAD` corresponde à revisão validada, executa o instalador atualizado e termina com `dotfiles-doctor`. O comando nunca executa reset, stash ou descarte automático de trabalho local.
+
+Essa política autentica a rota de distribuição configurada; ela **não** afirma que o transporte Git ou o selo "Verified" da interface do GitHub prove que o código recebido é benigno. A exigência de assinatura de commits/tags não foi ativada porque este repositório ainda não possui uma trust root local de assinatura verificável de forma consistente em Codespaces/clones Linux. As regras do repositório e o CI obrigatório protegem as mudanças que entram na `main`, enquanto o updater restringe independentemente qual remoto/branch pode ser executado.
 
 Remova apenas a configuração pertencente a este repositório:
 
@@ -442,7 +444,7 @@ Arquivos:
 Dockerfile.test
 ```
 
-Pull requests voltados à `main` expõem os nomes estáveis de check `Shell validation` e `Clean container lifecycle`; o ruleset da `main` pode exigir exatamente esses checks depois que esta versão do workflow estiver integrada e passando na `main`.
+Pull requests voltados à `main` expõem os nomes estáveis de check `Shell validation` e `Clean container lifecycle`; o ruleset ativo da `main` exige ambos os checks com enforcement estrito de status checks.
 
 ## Segurança
 
