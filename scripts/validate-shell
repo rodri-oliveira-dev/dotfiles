@@ -16,6 +16,7 @@ FILES=(
   "$ROOT_DIR/uninstall.sh"
   "$ROOT_DIR/tests/test_helper.bash"
   "$ROOT_DIR/tests/container-smoke.sh"
+  "$ROOT_DIR/tests/docker-context.sh"
 )
 
 for directory in "$ROOT_DIR/bin" "$ROOT_DIR/shell" "$ROOT_DIR/scripts" "$ROOT_DIR/.githooks"; do

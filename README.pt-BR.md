@@ -63,6 +63,7 @@ dotfiles/
 │   └── git.sh
 ├── tests/
 │   ├── container-smoke.sh
+│   ├── docker-context.sh
 │   ├── dotnet-deps.bats
 │   ├── dotnet-helpers.bats
 │   ├── dotnet-verify.bats
@@ -407,7 +408,7 @@ Validação estática:
 
 A validação comportamental usa Bats e cobre idempotência da instalação, links estáveis de configuração, gerenciamento do include do Git e dos hooks do repositório, comportamento de doctor/uninstall, comportamento seguro do `dotfiles-update`, descoberta da raiz do repositório, restore de ferramentas .NET locais, tratamento de uma ou várias solutions, diagnóstico somente leitura de repositórios .NET, os modos e o comportamento de falha do preflight `dotnet-verify`, os diagnósticos de saúde/origem de dependências NuGet nas formas de comando compatíveis com os SDKs suportados e a evaluation de propriedades/itens MSBuild com descoberta segura de projeto.
 
-Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança.
+Um container Ubuntu limpo também valida que a instalação é recusada para `root`, funciona e permanece idempotente para um usuário normal, configura os hooks do repositório, passa no `dotfiles-doctor` e pode ser desinstalada com segurança. O contexto Docker de teste é deny-by-default: somente entradas do lifecycle são permitidas, e um teste com sentinelas confirma que arquivos locais fictícios de `.env`/log não aparecem no filesystem final nem nas camadas salvas da imagem.
 
 Para executar localmente, depois de instalar `bats`, `shellcheck` e `shfmt`:
 
@@ -415,6 +416,7 @@ Para executar localmente, depois de instalar `bats`, `shellcheck` e `shfmt`:
 bash scripts/validate-shell
 bats tests
 docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
+bash tests/docker-context.sh
 ```
 
 Essas ferramentas são dependências somente de desenvolvimento/CI; o `install.sh` não as instala no ambiente pessoal.

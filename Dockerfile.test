@@ -5,7 +5,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace/dotfiles
-COPY . .
+
+COPY install.sh uninstall.sh ./
+COPY bin/ ./bin/
+COPY git/config ./git/config
+COPY shell/ ./shell/
+COPY tests/container-smoke.sh ./tests/container-smoke.sh
+COPY .githooks/pre-commit ./.githooks/pre-commit
 
 RUN if ./install.sh >/tmp/root-install.log 2>&1; then \
       cat /tmp/root-install.log; \

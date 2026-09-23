@@ -79,6 +79,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build lifecycle test image
+      - name: Build and verify lifecycle test image
         shell: bash
-        run: docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
+        run: bash tests/docker-context.sh
