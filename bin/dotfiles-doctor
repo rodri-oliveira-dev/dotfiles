@@ -103,17 +103,35 @@ fi
 printf '\nShell integration\n'
 printf '-----------------\n'
 
-if [[ -f "$BASHRC" ]]; then
-  BEGIN_COUNT="$(grep -Fc "$MARKER_BEGIN" "$BASHRC" || true)"
-  END_COUNT="$(grep -Fc "$MARKER_END" "$BASHRC" || true)"
+if [[ -L "$BASHRC" ]]; then
+  fail "$BASHRC is a symlink; the managed Bash startup file must be regular"
+elif [[ ! -e "$BASHRC" ]]; then
+  fail "$BASHRC does not exist"
+elif [[ ! -f "$BASHRC" ]]; then
+  fail "$BASHRC is not a regular file"
+else
+  MARKER_STATE="$(
+    awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+      $0 == begin {
+        begin_count++
+        if (begin_line == 0) begin_line = NR
+      }
+      $0 == end {
+        end_count++
+        if (end_line == 0) end_line = NR
+      }
+      END {
+        printf "%d %d %d %d\n", begin_count, end_count, begin_line, end_line
+      }
+    ' "$BASHRC"
+  )"
+  read -r BEGIN_COUNT END_COUNT BEGIN_LINE END_LINE <<<"$MARKER_STATE"
 
-  if [[ "$BEGIN_COUNT" == "1" && "$END_COUNT" == "1" ]]; then
+  if [[ "$BEGIN_COUNT" == "1" && "$END_COUNT" == "1" ]] && ((BEGIN_LINE < END_LINE)); then
     pass "managed $BASHRC block is present exactly once"
   else
-    fail "managed $BASHRC markers are inconsistent (begin=$BEGIN_COUNT, end=$END_COUNT)"
+    fail "managed $BASHRC markers are inconsistent (begin=$BEGIN_COUNT, end=$END_COUNT, begin_line=$BEGIN_LINE, end_line=$END_LINE)"
   fi
-else
-  fail "$BASHRC does not exist"
 fi
 
 case ":$PATH:" in

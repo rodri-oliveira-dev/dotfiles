@@ -34,6 +34,12 @@ assert_no_install_configuration_mutation() {
   fi
 }
 
+assert_no_managed_git_include() {
+  if git config --global --get-all include.path >"$BATS_TEST_TMPDIR/include-paths" 2>/dev/null; then
+    ! grep -Fxq "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig" "$BATS_TEST_TMPDIR/include-paths"
+  fi
+}
+
 @test "install is idempotent and creates stable managed links" {
   run "$REPO_ROOT/install.sh"
   [ "$status" -eq 0 ]
@@ -180,6 +186,227 @@ EOF
 
   run bash "$spaced_repo/install.sh"
   [ "$status" -eq 0 ]
+}
+
+@test "install refuses inverted managed Bash markers before changing managed state" {
+  cat >"$HOME/.bashrc" <<'EOF'
+export USER_SETTING=preserved
+# <<< rodri-dotfiles <<<
+echo keep-this
+# >>> rodri-dotfiles >>>
+EOF
+  cp "$HOME/.bashrc" "$BATS_TEST_TMPDIR/bashrc-before"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "managed Bash markers are out of order"
+  cmp -s "$BATS_TEST_TMPDIR/bashrc-before" "$HOME/.bashrc"
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_managed_git_include
+}
+
+@test "install refuses missing or duplicate exact Bash markers without truncating bashrc" {
+  cat >"$HOME/.bashrc" <<'EOF'
+export USER_SETTING=preserved
+# >>> rodri-dotfiles >>>
+echo keep-this
+EOF
+  cp "$HOME/.bashrc" "$BATS_TEST_TMPDIR/bashrc-missing-before"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "managed Bash markers are inconsistent"
+  cmp -s "$BATS_TEST_TMPDIR/bashrc-missing-before" "$HOME/.bashrc"
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_managed_git_include
+
+  cat >"$HOME/.bashrc" <<'EOF'
+export USER_SETTING=preserved
+# >>> rodri-dotfiles >>>
+echo first
+# <<< rodri-dotfiles <<<
+# >>> rodri-dotfiles >>>
+echo second
+# <<< rodri-dotfiles <<<
+EOF
+  cp "$HOME/.bashrc" "$BATS_TEST_TMPDIR/bashrc-duplicate-before"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "managed Bash markers are inconsistent"
+  cmp -s "$BATS_TEST_TMPDIR/bashrc-duplicate-before" "$HOME/.bashrc"
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  assert_no_managed_git_include
+}
+
+@test "marker text inside other comments is not treated as a managed marker" {
+  cat >"$HOME/.bashrc" <<'EOF'
+export USER_SETTING=preserved
+# Documentation example: # >>> rodri-dotfiles >>>
+# Documentation example: # <<< rodri-dotfiles <<<
+EOF
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -Fxc '# >>> rodri-dotfiles >>>' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -Fxc '# <<< rodri-dotfiles <<<' "$HOME/.bashrc")" -eq 1 ]
+  grep -Fq '# Documentation example: # >>> rodri-dotfiles >>>' "$HOME/.bashrc"
+
+  run "$HOME/.local/bin/dotfiles-doctor"
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "Failures: 0"
+
+  run "$REPO_ROOT/uninstall.sh"
+
+  [ "$status" -eq 0 ]
+  grep -Fq '# Documentation example: # >>> rodri-dotfiles >>>' "$HOME/.bashrc"
+  grep -Fq '# Documentation example: # <<< rodri-dotfiles <<<' "$HOME/.bashrc"
+  ! grep -Fxq '# >>> rodri-dotfiles >>>' "$HOME/.bashrc"
+  ! grep -Fxq '# <<< rodri-dotfiles <<<' "$HOME/.bashrc"
+}
+
+@test "install refuses symlinked and non-regular bashrc paths" {
+  external_bashrc="$BATS_TEST_TMPDIR/external bashrc"
+  printf 'external-content\n' >"$external_bashrc"
+  rm "$HOME/.bashrc"
+  ln -s "$external_bashrc" "$HOME/.bashrc"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to modify symlinked Bash startup file"
+  [ "$(cat "$external_bashrc")" = "external-content" ]
+  [ "$(readlink "$HOME/.bashrc")" = "$external_bashrc" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+
+  rm "$HOME/.bashrc"
+  mkdir "$HOME/.bashrc"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to modify non-regular Bash startup file"
+  [ -d "$HOME/.bashrc" ]
+  [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+}
+
+@test "uninstall refuses a symlinked bashrc before removing other managed state" {
+  run "$REPO_ROOT/install.sh"
+  [ "$status" -eq 0 ]
+
+  external_bashrc="$BATS_TEST_TMPDIR/external bashrc"
+  printf 'external-content\n' >"$external_bashrc"
+  rm "$HOME/.bashrc"
+  ln -s "$external_bashrc" "$HOME/.bashrc"
+
+  run "$REPO_ROOT/uninstall.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "refusing to modify symlinked Bash startup file"
+  [ "$(cat "$external_bashrc")" = "external-content" ]
+  [ -L "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  git config --global --get-all include.path | grep -Fxq "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig"
+}
+
+@test "install and uninstall preserve bashrc permissions" {
+  chmod 640 "$HOME/.bashrc"
+
+  run "$REPO_ROOT/install.sh"
+  [ "$status" -eq 0 ]
+  [ "$(stat -c '%a' "$HOME/.bashrc")" = "640" ]
+
+  run "$REPO_ROOT/uninstall.sh"
+  [ "$status" -eq 0 ]
+  [ "$(stat -c '%a' "$HOME/.bashrc")" = "640" ]
+  grep -Fq 'export USER_SETTING=preserved' "$HOME/.bashrc"
+}
+
+@test "bashrc lifecycle supports a missing file and HOME paths with spaces" {
+  export HOME="$BATS_TEST_TMPDIR/home with space"
+  export XDG_CONFIG_HOME="$HOME/custom config"
+  export PATH="$HOME/.local/bin:$ORIGINAL_PATH"
+  mkdir -p "$HOME"
+
+  run "$REPO_ROOT/install.sh"
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.bashrc" ]
+  [ "$(grep -Fxc '# >>> rodri-dotfiles >>>' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -Fxc '# <<< rodri-dotfiles <<<' "$HOME/.bashrc")" -eq 1 ]
+
+  run "$REPO_ROOT/install.sh"
+  [ "$status" -eq 0 ]
+  [ "$(grep -Fxc '# >>> rodri-dotfiles >>>' "$HOME/.bashrc")" -eq 1 ]
+
+  run "$REPO_ROOT/uninstall.sh"
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.bashrc" ]
+  ! grep -Fxq '# >>> rodri-dotfiles >>>' "$HOME/.bashrc"
+}
+
+@test "failed install rename preserves bashrc and cleans the temporary file" {
+  fake_bin="$BATS_TEST_TMPDIR/fake-mv-bin"
+  real_mv="$(command -v mv)"
+  mkdir -p "$fake_bin"
+  cp "$HOME/.bashrc" "$BATS_TEST_TMPDIR/bashrc-before"
+
+  cat >"$fake_bin/mv" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="\${@: -1}"
+if [[ "\$destination" == "$HOME/.bashrc" ]]; then
+  exit 73
+fi
+exec "$real_mv" "\$@"
+EOF
+  chmod +x "$fake_bin/mv"
+
+  PATH="$fake_bin:$PATH" run "$REPO_ROOT/install.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "failed to atomically replace $HOME/.bashrc"
+  cmp -s "$BATS_TEST_TMPDIR/bashrc-before" "$HOME/.bashrc"
+  shopt -s nullglob
+  leftovers=("$HOME"/.bashrc.rodri-dotfiles.*)
+  [ "${#leftovers[@]}" -eq 0 ]
+}
+
+@test "failed uninstall rename preserves bashrc and managed state and cleans the temporary file" {
+  run "$REPO_ROOT/install.sh"
+  [ "$status" -eq 0 ]
+  cp "$HOME/.bashrc" "$BATS_TEST_TMPDIR/bashrc-before-uninstall"
+
+  fake_bin="$BATS_TEST_TMPDIR/fake-uninstall-mv-bin"
+  real_mv="$(command -v mv)"
+  mkdir -p "$fake_bin"
+
+  cat >"$fake_bin/mv" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="\${@: -1}"
+if [[ "\$destination" == "$HOME/.bashrc" ]]; then
+  exit 74
+fi
+exec "$real_mv" "\$@"
+EOF
+  chmod +x "$fake_bin/mv"
+
+  PATH="$fake_bin:$PATH" run "$REPO_ROOT/uninstall.sh"
+
+  [ "$status" -ne 0 ]
+  assert_contains "$output" "failed to atomically replace $HOME/.bashrc"
+  cmp -s "$BATS_TEST_TMPDIR/bashrc-before-uninstall" "$HOME/.bashrc"
+  [ -L "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  git config --global --get-all include.path | grep -Fxq "$XDG_CONFIG_HOME/rodri-dotfiles/gitconfig"
+  shopt -s nullglob
+  leftovers=("$HOME"/.bashrc.rodri-dotfiles.*)
+  [ "${#leftovers[@]}" -eq 0 ]
 }
 
 @test "dotfiles-doctor succeeds after installation" {

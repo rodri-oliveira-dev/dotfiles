@@ -15,37 +15,119 @@ MARKER_BEGIN="# >>> rodri-dotfiles >>>"
 MARKER_END="# <<< rodri-dotfiles <<<"
 STABLE_GIT_CONFIG_FILE="$CONFIG_DIR/gitconfig"
 LEGACY_GIT_CONFIG_FILE="$DOTFILES_DIR/git/config"
+BASHRC_TEMP_FILE=""
 
-remove_managed_block() {
+cleanup_bashrc_temp() {
+  if [[ -n "$BASHRC_TEMP_FILE" ]]; then
+    rm -f -- "$BASHRC_TEMP_FILE" || true
+  fi
+}
+
+trap cleanup_bashrc_temp EXIT
+
+validate_bashrc_file() {
+  local path="$1"
+  local display_path="${2:-$path}"
+  local marker_state
   local begin_count
   local end_count
-  local temporary_file
+  local begin_line
+  local end_line
 
-  [[ -f "$BASHRC" ]] || return 0
+  if [[ -L "$path" ]]; then
+    echo "Error: refusing to modify symlinked Bash startup file: $display_path" >&2
+    return 1
+  fi
 
-  begin_count="$(grep -Fc "$MARKER_BEGIN" "$BASHRC" || true)"
-  end_count="$(grep -Fc "$MARKER_END" "$BASHRC" || true)"
+  if [[ -e "$path" && ! -f "$path" ]]; then
+    echo "Error: refusing to modify non-regular Bash startup file: $display_path" >&2
+    return 1
+  fi
+
+  [[ -e "$path" ]] || return 0
+
+  marker_state="$(
+    awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+      $0 == begin {
+        begin_count++
+        if (begin_line == 0) begin_line = NR
+      }
+      $0 == end {
+        end_count++
+        if (end_line == 0) end_line = NR
+      }
+      END {
+        printf "%d %d %d %d\n", begin_count, end_count, begin_line, end_line
+      }
+    ' "$path"
+  )"
+  read -r begin_count end_count begin_line end_line <<<"$marker_state"
 
   if [[ "$begin_count" == "0" && "$end_count" == "0" ]]; then
     return 0
   fi
 
   if [[ "$begin_count" != "1" || "$end_count" != "1" ]]; then
-    echo "Warning: managed ~/.bashrc markers are inconsistent; leaving ~/.bashrc unchanged." >&2
+    echo "Error: managed Bash markers are inconsistent in $display_path (begin=$begin_count, end=$end_count)." >&2
+    return 1
+  fi
+
+  if ((begin_line >= end_line)); then
+    echo "Error: managed Bash markers are out of order in $display_path." >&2
+    return 1
+  fi
+}
+
+remove_managed_block() {
+  local bashrc_dir
+
+  if [[ ! -e "$BASHRC" && ! -L "$BASHRC" ]]; then
     return 0
   fi
 
-  temporary_file="$(mktemp)"
+  validate_bashrc_file "$BASHRC"
 
-  awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+  if ! grep -Fxq "$MARKER_BEGIN" "$BASHRC"; then
+    return 0
+  fi
+
+  bashrc_dir="$(dirname "$BASHRC")"
+
+  if ! BASHRC_TEMP_FILE="$(mktemp "$bashrc_dir/.bashrc.rodri-dotfiles.XXXXXX")"; then
+    echo "Error: failed to create temporary Bash startup file beside $BASHRC." >&2
+    return 1
+  fi
+
+  if ! cp -p -- "$BASHRC" "$BASHRC_TEMP_FILE"; then
+    echo "Error: failed to copy $BASHRC before updating it; original file was left unchanged." >&2
+    return 1
+  fi
+
+  if ! awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
     $0 == begin { skipping = 1; next }
     $0 == end   { skipping = 0; next }
     !skipping   { print }
-  ' "$BASHRC" >"$temporary_file"
+  ' "$BASHRC" >"$BASHRC_TEMP_FILE"; then
+    echo "Error: failed to build updated Bash startup file; $BASHRC was left unchanged." >&2
+    return 1
+  fi
 
-  cat "$temporary_file" >"$BASHRC"
-  rm -f "$temporary_file"
+  if ! validate_bashrc_file "$BASHRC_TEMP_FILE" "temporary Bash startup file for $BASHRC"; then
+    echo "Error: refusing to replace $BASHRC because the generated file failed validation." >&2
+    return 1
+  fi
 
+  if grep -Fxq "$MARKER_BEGIN" "$BASHRC_TEMP_FILE" || grep -Fxq "$MARKER_END" "$BASHRC_TEMP_FILE"; then
+    echo "Error: managed Bash markers remain after removal; $BASHRC was left unchanged." >&2
+    return 1
+  fi
+
+  if ! mv -- "$BASHRC_TEMP_FILE" "$BASHRC"; then
+    echo "Error: failed to atomically replace $BASHRC; original file was left unchanged." >&2
+    return 1
+  fi
+
+  BASHRC_TEMP_FILE=""
   echo "Removed managed block from ~/.bashrc."
 }
 

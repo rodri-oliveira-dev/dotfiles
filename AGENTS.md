@@ -48,6 +48,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Preserve reversibility: `uninstall.sh` must remove only repository-managed state and leave unrelated user configuration intact.
 - Installation must never overwrite, remove, or rename a pre-existing unmanaged destination; a managed symlink may be created only when the destination is absent or already points exactly to the expected target.
 - Do not replace the user's complete `~/.bashrc` or `~/.gitconfig`.
+- Treat `~/.bashrc` as an integrity boundary: refuse symlinks/non-regular files, require exact unique ordered managed markers, and stage rewrites beside the file before atomic replacement while preserving existing permissions.
 - Preserve settings injected by GitHub Codespaces and other tools.
 - Never run the installer or uninstaller as `root`; privileged execution is outside the supported lifecycle.
 - Configure Git hooks locally for this repository; do not set a global `core.hooksPath` as part of dotfiles installation.
