@@ -63,7 +63,7 @@ Não adicione `Directory.Build.props`, `Directory.Packages.props`, arquivos de p
 - Não reduza validações apenas para fazer uma mudança passar.
 - Mantenha permissões do GitHub Actions mínimas e somente leitura, salvo quando uma capacidade de escrita for explicitamente necessária.
 - Fixe GitHub Actions de terceiros por commit SHA completo; use Dependabot para manter esses pins.
-- Preserve filtros de paths, cancelamento por concurrency e timeouts limitados, salvo quando existir requisito concreto para alterá-los.
+- Preserve filtros de paths no `push`, cancelamento por concurrency e timeouts limitados, salvo quando existir requisito concreto para alterá-los; pull requests voltados à `main` não devem usar filtros de paths, pois os checks obrigatórios estáveis precisam sempre ser reportados.
 
 ## Validação obrigatória
 
