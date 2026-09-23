@@ -63,7 +63,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Do not weaken validation merely to make a change pass.
 - Keep GitHub Actions permissions minimal and read-only unless a write capability is explicitly required.
 - Pin third-party GitHub Actions to full commit SHAs; use Dependabot to maintain those pins.
-- Preserve path filters, concurrency cancellation, and bounded job timeouts unless a concrete requirement justifies changing them.
+- Preserve push path filters, concurrency cancellation, and bounded job timeouts unless a concrete requirement justifies changing them; pull requests targeting `main` must not use path filters because the stable required checks must always be reported.
 
 ## Required validation
 

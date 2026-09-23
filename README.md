@@ -62,6 +62,7 @@ dotfiles/
 │   ├── dotnet.sh
 │   └── git.sh
 ├── tests/
+│   ├── ci-policy.bats
 │   ├── container-smoke.sh
 │   ├── docker-context.sh
 │   ├── dotnet-deps.bats
@@ -423,9 +424,9 @@ These tools are development/CI dependencies only; `install.sh` does not install 
 
 ### CI hardening
 
-The validation workflow is intentionally scoped and hardened:
+The validation workflow is intentionally hardened:
 
-- it runs only when shell/runtime validation inputs change, avoiding runner usage for documentation-only changes;
+- every pull request targeting `main` runs validation, including documentation-only and `git/config` changes, so required checks are always reported;
 - concurrency cancels older runs for the same ref when a newer commit arrives;
 - shell validation has a five-minute timeout and clean-container validation has a ten-minute timeout;
 - repository permissions are read-only;
@@ -441,7 +442,7 @@ Files:
 Dockerfile.test
 ```
 
-If this workflow is later configured as a required status check, review the path filters before relying on it for documentation-only pull requests.
+Pull requests targeting `main` expose the stable check names `Shell validation` and `Clean container lifecycle`; the `main` ruleset can require those exact checks after this workflow version is merged and passing on `main`.
 
 ## Security
 

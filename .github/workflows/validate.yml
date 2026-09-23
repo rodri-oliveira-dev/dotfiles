@@ -19,20 +19,8 @@ on:
       - ".github/workflows/validate.yml"
       - ".github/dependabot.yml"
   pull_request:
-    paths:
-      - "install.sh"
-      - "uninstall.sh"
-      - "bin/**"
-      - "shell/**"
-      - "scripts/**"
-      - ".githooks/**"
-      - "tests/**"
-      - "Dockerfile.test"
-      - ".dockerignore"
-      - ".editorconfig"
-      - ".gitattributes"
-      - ".github/workflows/validate.yml"
-      - ".github/dependabot.yml"
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
