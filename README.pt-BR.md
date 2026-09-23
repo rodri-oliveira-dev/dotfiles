@@ -463,7 +463,7 @@ O workflow de validação é deliberadamente endurecido:
 - as permissões do repositório são somente leitura;
 - `actions/checkout` fica fixado em um commit SHA completo e não persiste credenciais;
 - o job de container limpo executa somente depois que validação estática e Bats passam;
-- o Dependabot verifica semanalmente dependências do GitHub Actions e agrupa atualizações disponíveis em um único pull request.
+- o Dependabot verifica semanalmente dependências do GitHub Actions, aplica cooldown de sete dias às atualizações de versão e agrupa atualizações disponíveis em um único pull request.
 
 Arquivos:
 
