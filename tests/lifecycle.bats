@@ -95,14 +95,14 @@ assert_no_install_configuration_mutation() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-destination="${@: -1}"
+destination="\${@: -1}"
 
-if [[ "$destination" == "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]]; then
+if [[ "\$destination" == "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]]; then
   : >"$race_marker"
-  mkdir -p "$destination"
+  mkdir -p "\$destination"
 fi
 
-exec "$real_ln" "$@"
+exec "$real_ln" "\$@"
 EOF
   chmod +x "$fake_bin/ln"
 
