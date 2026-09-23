@@ -35,6 +35,11 @@ validate_managed_link() {
   local destination="$2"
   local actual_target
 
+  if [[ ! -f "$target" ]]; then
+    echo "Error: missing managed target: $target" >&2
+    return 1
+  fi
+
   if [[ ! -e "$destination" && ! -L "$destination" ]]; then
     return 0
   fi
@@ -64,7 +69,7 @@ create_managed_link() {
     return 0
   fi
 
-  if ! ln -s -- "$target" "$destination"; then
+  if ! ln -sT -- "$target" "$destination"; then
     echo "Error: failed to create managed symlink: $destination" >&2
     echo "Existing paths were not removed; managed links created earlier in this run may remain." >&2
     return 1
