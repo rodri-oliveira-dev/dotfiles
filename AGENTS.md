@@ -64,6 +64,9 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Do not weaken validation merely to make a change pass.
 - Keep GitHub Actions permissions minimal and read-only unless a write capability is explicitly required.
 - Pin third-party GitHub Actions to full commit SHAs; use Dependabot to maintain those pins.
+- Keep security scanners fail-closed inside the stable `Shell validation` check. Scanner release binaries must use explicit versions plus verified SHA-256 digests; do not replace them with floating tags or unverified downloads.
+- Gitleaks CI scanning covers the current committed snapshot with full redaction; full-history scanning is a deliberate manual audit. Never print or upload raw secret candidates merely to diagnose a finding.
+- Keep zizmor offline in CI and do not grant scanner-specific tokens or write permissions. Treat scanner exceptions as narrow, documented policy decisions rather than blanket suppressions.
 - Preserve push path filters, concurrency cancellation, and bounded job timeouts unless a concrete requirement justifies changing them; pull requests targeting `main` must not use path filters because the stable required checks must always be reported.
 
 ## Trust boundaries for repository-aware .NET commands
@@ -81,6 +84,8 @@ For shell-related changes, run from the repository root when the environment all
 
 ```bash
 bash scripts/validate-shell
+bash scripts/install-security-tools
+bash scripts/security-scan
 bats tests
 docker build --file Dockerfile.test --tag dotfiles-lifecycle-test .
 ```

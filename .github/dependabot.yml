@@ -1,7 +1,7 @@
 version: 2
 
 updates:
-  - package-ecosystem: "github-actions"
+  - package-ecosystem: "github-actions" # zizmor: ignore[dependabot-cooldown] Existing weekly cadence; cooldown policy is outside issue #15.
     directory: "/"
     schedule:
       interval: "weekly"

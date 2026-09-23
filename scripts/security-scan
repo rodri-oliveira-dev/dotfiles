@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TOOLS_DIR="${SECURITY_TOOLS_DIR:-$HOME/.local/bin}"
+export PATH="$TOOLS_DIR:$PATH"
+
+require_tool() {
+  local tool="$1"
+
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    printf 'Error: %s is required. Run scripts/install-security-tools first.\n' "$tool" >&2
+    exit 1
+  fi
+}
+
+for tool in gitleaks actionlint zizmor hadolint git; do
+  require_tool "$tool"
+done
+
+cd "$ROOT_DIR"
+
+printf 'Scanning current revision for secrets with Gitleaks...\n'
+bash "$ROOT_DIR/scripts/scan-tracked-secrets"
+
+printf 'Linting GitHub Actions workflows with actionlint...\n'
+actionlint
+
+printf 'Auditing GitHub Actions configuration with zizmor (offline)...\n'
+ZIZMOR_OFFLINE=1 zizmor --offline --strict-collection "$ROOT_DIR"
+
+printf 'Linting Dockerfile.test with Hadolint...\n'
+hadolint --config "$ROOT_DIR/.hadolint.yaml" "$ROOT_DIR/Dockerfile.test"
+
+printf 'Verifying synthetic secret finding fails closed without disclosure...\n'
+bash "$ROOT_DIR/tests/security-scans.sh"
+
+printf 'Security scans completed successfully.\n'
