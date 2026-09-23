@@ -57,7 +57,7 @@ validate_bashrc_file() {
         if (end_line == 0) end_line = NR
       }
       END {
-        printf "%d %d %d %d\\n", begin_count, end_count, begin_line, end_line
+        printf "%d %d %d %d\n", begin_count, end_count, begin_line, end_line
       }
     ' "$path"
   )"
