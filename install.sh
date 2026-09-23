@@ -98,7 +98,7 @@ ensure_managed_bashrc() {
     return 1
   fi
 
-  if ! cat >>"$BASHRC_TEMP_FILE" <<'EOF'
+  if ! cat >>"$BASHRC_TEMP_FILE" <<'EOF'; then
 
 # >>> rodri-dotfiles >>>
 DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rodri-dotfiles"
@@ -123,7 +123,6 @@ esac
 unset DOTFILES_CONFIG_DIR
 # <<< rodri-dotfiles <<<
 EOF
-  then
     echo "Error: failed to write temporary Bash startup file; $BASHRC was left unchanged." >&2
     return 1
   fi
