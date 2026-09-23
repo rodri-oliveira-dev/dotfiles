@@ -87,6 +87,7 @@ assert_no_install_configuration_mutation() {
 
 @test "install fails safely if a directory appears at a validated destination before link creation" {
   fake_bin="$BATS_TEST_TMPDIR/fake-ln-bin"
+  race_marker="$BATS_TEST_TMPDIR/ln-race-triggered"
   real_ln="$(command -v ln)"
   mkdir -p "$fake_bin"
 
@@ -97,6 +98,7 @@ set -euo pipefail
 destination="${@: -1}"
 
 if [[ "$destination" == "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]]; then
+  : >"$race_marker"
   mkdir -p "$destination"
 fi
 
@@ -108,7 +110,7 @@ EOF
 
   [ "$status" -ne 0 ]
   assert_contains "$output" "failed to create managed symlink"
-  [ -d "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh" ]
+  [ -f "$race_marker" ]
   [ ! -e "$XDG_CONFIG_HOME/rodri-dotfiles/aliases.sh/aliases.sh" ]
   assert_no_install_configuration_mutation
 }
