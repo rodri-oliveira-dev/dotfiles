@@ -179,6 +179,30 @@ The hook and CI share the same validation entry point:
 bash scripts/validate-shell
 ```
 
+## Trust boundaries for .NET helpers
+
+These helpers are convenience wrappers, not a security sandbox. A repository being a Git worktree does not make its project files, imports, package sources, tools, build logic, or tests trustworthy.
+
+| Helper group | What it does | Important side effects / trust boundary | Recommended trust level |
+| --- | --- | --- | --- |
+| `dotnet-context`, `dotnet-repo-doctor`, `dotnet-sdk`, `dotnet-tools`, `dotnet-solutions` | Reads repository metadata and configuration; some commands also invoke the .NET host for SDK/tool information. | No explicit package restore, build, or test is requested by these helpers. However, `global.json` and tool metadata still come from the target repository, and invoking `dotnet` is not equivalent to plain-text inspection. | Suitable for repositories you are willing to inspect with the installed .NET host. For unknown code, prefer plain file inspection first. |
+| `dotnet-prop`, `dotnet-props`, `dotnet-items` | Invokes `dotnet msbuild` to evaluate properties/items without intentionally running a build target. | MSBuild evaluation loads project files, SDK resolution and imported files such as `Directory.Build.props`/`Directory.Build.targets` and other imports. “No build” does not mean isolated or safe evaluation of an untrusted project. | Treat the repository and its MSBuild inputs as trusted before running. |
+| `dotnet-deps`, `dotnet-why` | Queries package/dependency information through the .NET CLI. | May evaluate project metadata and use existing restore assets. `dotnet-deps` can contact configured NuGet sources and, on supported SDKs, may restore automatically. Package-source credentials and network access can therefore be in scope. | Use only after reviewing package sources/configuration and deciding the repository is appropriate to query with your credentials/network. |
+| `dotnet-bootstrap` | Runs local tool restore when a tool manifest exists, then restores NuGet packages. | Can access package feeds, consume `NuGet.config`, restore project dependencies, evaluate MSBuild restore logic, and download repository-declared local tools. | Trusted repositories only. Review manifests and package sources before use. |
+| `dotnet-verify` | Restores tools/packages, builds, optionally runs formatting verification, and runs tests. | Build/test can load MSBuild tasks, analyzers, source generators, format tooling and test code supplied by the repository. This is code execution with the current user's filesystem, environment, network and credentials unless the surrounding environment restricts them. | Trusted repositories only; for external code, run only after explicit review/approval in a constrained environment. |
+
+Project-controlled inputs include at least `global.json`, project/solution files, `Directory.Build.props`, `Directory.Build.targets`, other MSBuild imports, `Directory.Packages.props`, `.config/dotnet-tools.json`, and repository/user `NuGet.config` files. Review the relevant inputs before restore, MSBuild evaluation, build, formatting, or test execution.
+
+For external or not-yet-trusted repositories:
+
+- prefer plain-text inspection (`cat`, `grep`, `find`, source review) before invoking project-aware tooling;
+- use a disposable container, VM, or Codespace without personal/repository/cloud secrets;
+- restrict filesystem permissions and network access when practical;
+- avoid exposing authenticated NuGet feeds or other package-source credentials until the repository and its configuration have been reviewed;
+- require an explicit human decision before automation performs MSBuild evaluation, tool/package restore, build, formatting, or tests.
+
+The helpers intentionally keep their existing non-interactive interfaces. They do not add prompts and they do not claim to provide process, filesystem, credential, or network isolation.
+
 ## .NET commands
 
 ### Aliases
