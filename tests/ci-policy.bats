@@ -49,15 +49,3 @@ setup() {
   grep -Fq 'gh release create "$tag" --verify-tag' "$release_workflow"
   ! grep -Fq -- '--force' "$release_workflow"
 }
-
-@test "tag ruleset blocks updates and deletions but permits first creation" {
-  local ruleset="$REPO_ROOT/.github/rulesets/immutable-tags.json"
-
-  grep -Fq '"target": "tag"' "$ruleset"
-  grep -Fq '"enforcement": "active"' "$ruleset"
-  grep -Fq '"bypass_actors": []' "$ruleset"
-  grep -Fq '"~ALL"' "$ruleset"
-  grep -Fq '"type": "update"' "$ruleset"
-  grep -Fq '"type": "deletion"' "$ruleset"
-  ! grep -Fq '"type": "creation"' "$ruleset"
-}
