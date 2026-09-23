@@ -16,6 +16,7 @@ while [[ -L "$DOTNET_HELPER_PATH" ]]; do
     DOTNET_HELPER_PATH="$(dirname -- "$DOTNET_HELPER_PATH")/$DOTNET_HELPER_LINK"
   fi
 done
+DOTNET_PROPS_SOURCE="$DOTNET_HELPER_PATH"
 # shellcheck source=lib/dotnet-common.sh
 source "$(cd -- "$(dirname -- "$DOTNET_HELPER_PATH")/../lib" && pwd)/dotnet-common.sh"
 unset DOTNET_HELPER_PATH DOTNET_HELPER_HOPS DOTNET_HELPER_LINK
@@ -113,20 +114,32 @@ PROPERTIES=(
   OutputPath
 )
 
+IFS=,
+PROPERTY_LIST="${PROPERTIES[*]}"
+unset IFS
+
 if [[ "$OUTPUT_JSON" == "true" ]]; then
-  IFS=,
-  PROPERTY_LIST="${PROPERTIES[*]}"
-  unset IFS
+  # The JSON CLI contract remains the unmodified output and exit status of MSBuild.
   (cd "$ROOT" && dotnet msbuild "$TARGET" "-getProperty:$PROPERTY_LIST" -nologo)
   exit $?
 fi
 
-printf 'Project: %s\n\n' "${TARGET#"$ROOT"/}"
+# Only the human-readable mode needs Python's standard-library JSON parser.
+# Check before evaluating MSBuild so a missing dependency cannot execute the
+# project and then fail to render the result.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: Python 3 is required to format dotnet-props output; use --json to obtain the MSBuild response without Python." >&2
+  exit 2
+fi
 
-for property in "${PROPERTIES[@]}"; do
-  if ! value="$(cd "$ROOT" && dotnet msbuild "$TARGET" "-getProperty:$property" -nologo)"; then
-    printf 'Error: failed to evaluate MSBuild property %s.\n' "$property" >&2
-    exit 1
-  fi
-  printf '%-38s %s\n' "$property:" "$value"
-done
+if ! SNAPSHOT="$(cd "$ROOT" && dotnet msbuild "$TARGET" "-getProperty:$PROPERTY_LIST" -nologo)"; then
+  echo "Error: failed to evaluate MSBuild properties." >&2
+  exit 1
+fi
+
+# Validate all 19 property values before emitting any part of the human report.
+# A JSON parsing error must not create an apparently complete partial snapshot.
+if ! printf '%s\n' "$SNAPSHOT" | python3 "$(cd -- "$(dirname -- "$DOTNET_PROPS_SOURCE")/../lib" && pwd)/dotnet-props-format.py" "${TARGET#"$ROOT"/}" "${PROPERTIES[@]}"; then
+  echo "Error: failed to format evaluated MSBuild properties." >&2
+  exit 1
+fi
