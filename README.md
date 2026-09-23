@@ -115,6 +115,7 @@ The installer is designed to be idempotent and must run as the normal developmen
 - adds the dotfiles block to `~/.bashrc` only once and sources fragments only when readable;
 - migrates the original repository-relative Git `include.path` to the stable configuration path;
 - exposes scripts from `bin/` through `~/.local/bin`;
+- refuses to replace pre-existing configuration or `~/.local/bin` paths unless they are already the exact managed symlinks expected by this repository;
 - configures this repository's local `core.hooksPath` to `.githooks` without changing the global hooks path used by other repositories.
 
 It deliberately does **not** replace the complete `~/.bashrc` or `~/.gitconfig`, which avoids overwriting configuration added by Codespaces or other tools.
