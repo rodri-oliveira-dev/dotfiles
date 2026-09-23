@@ -36,7 +36,7 @@ setup() {
   grep -Fxq "    name: Clean container lifecycle" "$WORKFLOW"
 }
 
-@test "manual release runs only from current main and never reuses a tag" {
+@test "manual release requires main, checkout, explicit recovery and protected tag creation" {
   local release_workflow="$REPO_ROOT/.github/workflows/release.yml"
 
   grep -Fxq "  workflow_dispatch:" "$release_workflow"
@@ -45,7 +45,16 @@ setup() {
   grep -Fxq "      contents: write" "$release_workflow"
   grep -Fq '[[ "$GITHUB_REF" != "refs/heads/main" ]]' "$release_workflow"
   grep -Fq '[[ "$GITHUB_SHA" != "$main_sha" ]]' "$release_workflow"
+  grep -Fxq "        default: false" "$release_workflow"
+  grep -Fxq "        type: boolean" "$release_workflow"
+  grep -Fxq '      RECOVER_EXISTING_TAG: ${{ inputs.recover_existing_tag }}' "$release_workflow"
+  grep -Fq "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" "$release_workflow"
+  grep -Fxq "          persist-credentials: false" "$release_workflow"
+  grep -Fxq "          fetch-depth: 0" "$release_workflow"
+  grep -Fq '[[ "$RECOVER_EXISTING_TAG" == "true" ]]' "$release_workflow"
+  grep -Fq 'git merge-base --is-ancestor "$tag_sha" "$GITHUB_SHA"' "$release_workflow"
+  grep -Fq 'gh release view "$tag" --repo "$GITHUB_REPOSITORY"' "$release_workflow"
   grep -Fq 'gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs"' "$release_workflow"
-  grep -Fq 'gh release create "$tag" --verify-tag' "$release_workflow"
+  grep -Fq 'gh release create "$tag" --repo "$GITHUB_REPOSITORY" --verify-tag' "$release_workflow"
   ! grep -Fq -- '--force' "$release_workflow"
 }
