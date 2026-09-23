@@ -1,5 +1,9 @@
 # dotfiles
 
+[![CI](https://github.com/rodri-oliveira-dev/dotfiles/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/rodri-oliveira-dev/dotfiles/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/rodri-oliveira-dev/dotfiles?label=release)](https://github.com/rodri-oliveira-dev/dotfiles/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/rodri-oliveira-dev/dotfiles)](LICENSE)
+
 Configuração pessoal de ambiente de desenvolvimento para **.NET**, **Git** e **GitHub Codespaces**.
 
 [English](README.md) | [Português (Brasil)](README.pt-BR.md)
