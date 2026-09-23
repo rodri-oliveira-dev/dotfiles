@@ -85,7 +85,7 @@ if [[ -z "$ITEM" ]]; then
   exit 2
 fi
 
-dotnet_common_require_host
+dotnet_common_require_host 2
 ROOT="$(dotnet_common_root)"
 dotnet_common_resolve_sdk "$ROOT" "no .NET SDK could be resolved for $ROOT."
 dotnet_common_require_msbuild_sdk
