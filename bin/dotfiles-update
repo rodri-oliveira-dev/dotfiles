@@ -27,9 +27,9 @@ die() {
 
 is_official_remote_url() {
   case "$1" in
-    "https://github.com/rodri-oliveira-dev/dotfiles" |       "https://github.com/rodri-oliveira-dev/dotfiles.git" |       "git@github.com:rodri-oliveira-dev/dotfiles" |       "git@github.com:rodri-oliveira-dev/dotfiles.git" |       "ssh://git@github.com/rodri-oliveira-dev/dotfiles" |       "ssh://git@github.com/rodri-oliveira-dev/dotfiles.git")
-      return 0
-      ;;
+  "https://github.com/rodri-oliveira-dev/dotfiles" | "https://github.com/rodri-oliveira-dev/dotfiles.git" | "git@github.com:rodri-oliveira-dev/dotfiles" | "git@github.com:rodri-oliveira-dev/dotfiles.git" | "ssh://git@github.com/rodri-oliveira-dev/dotfiles" | "ssh://git@github.com/rodri-oliveira-dev/dotfiles.git")
+    return 0
+    ;;
   esac
 
   return 1
