@@ -55,6 +55,7 @@ Do not add `Directory.Build.props`, `Directory.Packages.props`, project files, o
 - Update helpers must refuse destructive reconciliation: do not reset, stash, or discard local changes automatically.
 - Quote shell variables unless unquoted expansion is deliberate and safe.
 - Avoid destructive commands unless the target is tightly validated.
+- Keep Docker test builds deny-by-default: do not use broad `COPY . .`; allow only required lifecycle inputs and keep local secrets, credentials, keys, logs, backups, caches, Git metadata, and temporary files outside image layers.
 - Do not install project-specific SDKs, tools, databases, or services globally.
 - Do not introduce secrets, tokens, private URLs, credentials, or private keys.
 - Keep `bin/` versioned; it is source code in this repository, not build output.
