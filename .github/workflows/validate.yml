@@ -34,7 +34,7 @@ permissions:
 jobs:
   shell:
     name: Shell validation
-    runs-on: ubuntu-latest
+    runs-on: ${{ (vars.RUNNER_OS == 'ubuntu-24.04' || vars.RUNNER_OS == 'ubuntu-26.04') && vars.RUNNER_OS || 'ubuntu-26.04' }}
     timeout-minutes: 10
 
     steps:
@@ -67,8 +67,8 @@ jobs:
 
   container:
     name: Clean container lifecycle
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ${{ (vars.RUNNER_OS == 'ubuntu-24.04' || vars.RUNNER_OS == 'ubuntu-26.04') && vars.RUNNER_OS || 'ubuntu-26.04' }}
+    timeout-minutes: 15
     needs: shell
 
     steps:
@@ -77,6 +77,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build and verify lifecycle test image
+      - name: Verify lifecycle on Ubuntu 24.04
         shell: bash
-        run: bash tests/docker-context.sh
+        run: bash tests/docker-context.sh dotfiles-lifecycle-test-ubuntu-24 24.04
+
+      - name: Verify lifecycle on Ubuntu 26.04
+        shell: bash
+        run: bash tests/docker-context.sh dotfiles-lifecycle-test-ubuntu-26 26.04

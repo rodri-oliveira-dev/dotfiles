@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE_TAG="${1:-dotfiles-lifecycle-test}"
+UBUNTU_VERSION="${2:-24.04}"
 ENV_SENTINEL="$REPO_ROOT/.env.docker-context-sentinel"
 LOG_SENTINEL="$REPO_ROOT/docker-context-sentinel.log"
 SAVE_DIR=""
@@ -19,13 +20,25 @@ cleanup() {
 
 trap cleanup EXIT
 
+case "$UBUNTU_VERSION" in
+24.04 | 26.04) ;;
+*)
+  echo "Error: unsupported lifecycle Ubuntu version: $UBUNTU_VERSION" >&2
+  exit 2
+  ;;
+esac
+
 printf '%s\n' "$ENV_VALUE" >"$ENV_SENTINEL"
 printf '%s\n' "$LOG_VALUE" >"$LOG_SENTINEL"
 
 git -C "$REPO_ROOT" check-ignore -q -- ".env.docker-context-sentinel"
 git -C "$REPO_ROOT" check-ignore -q -- "docker-context-sentinel.log"
 
-docker build --file "$REPO_ROOT/Dockerfile.test" --tag "$IMAGE_TAG" "$REPO_ROOT"
+docker build \
+  --build-arg "UBUNTU_VERSION=$UBUNTU_VERSION" \
+  --file "$REPO_ROOT/Dockerfile.test" \
+  --tag "$IMAGE_TAG" \
+  "$REPO_ROOT"
 
 docker run --rm "$IMAGE_TAG" sh -c '
   test ! -e /workspace/dotfiles/.env.docker-context-sentinel
@@ -65,4 +78,4 @@ tar -xf "$SAVE_DIR/image.tar" -C "$SAVE_DIR/extracted"
 check_saved_layers_absent "$ENV_VALUE" "fictitious .env sentinel"
 check_saved_layers_absent "$LOG_VALUE" "Git-ignored log sentinel"
 
-printf 'Docker context hardening test completed successfully.\n'
+printf 'Docker context hardening test completed successfully on Ubuntu %s.\n' "$UBUNTU_VERSION"
