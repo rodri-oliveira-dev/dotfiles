@@ -36,6 +36,26 @@ setup() {
   grep -Fxq "    name: Clean container lifecycle" "$WORKFLOW"
 }
 
+@test "active Linux jobs use the governed Ubuntu 26.04 runner fallback" {
+  local workflow_file
+  local runner_line
+  local governed_runner='runs-on: ${{ vars.RUNNER_OS || '\''ubuntu-26.04'\'' }}'
+  local governed_jobs=0
+
+  for workflow_file in "$REPO_ROOT"/.github/workflows/*.yml; do
+    ! grep -Eq '^[[:space:]]+runs-on:[[:space:]]+ubuntu-' "$workflow_file"
+
+    while IFS= read -r runner_line; do
+      if [[ "$runner_line" == *"RUNNER_OS"* || "$runner_line" == *"ubuntu-"* ]]; then
+        [[ "$runner_line" == *"$governed_runner"* ]]
+        governed_jobs=$((governed_jobs + 1))
+      fi
+    done < <(grep -E '^[[:space:]]+runs-on:' "$workflow_file" || true)
+  done
+
+  [[ "$governed_jobs" -gt 0 ]]
+}
+
 @test "manual release requires main, checkout, explicit recovery and protected tag creation" {
   local release_workflow="$REPO_ROOT/.github/workflows/release.yml"
 
