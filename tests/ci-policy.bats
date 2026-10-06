@@ -36,10 +36,10 @@ setup() {
   grep -Fxq "    name: Clean container lifecycle" "$WORKFLOW"
 }
 
-@test "active Linux jobs use the governed Ubuntu 26.04 runner fallback" {
+@test "active Linux jobs allow only governed GitHub-hosted Ubuntu runners" {
   local workflow_file
   local runner_line
-  local governed_runner='runs-on: ${{ vars.RUNNER_OS || '\''ubuntu-26.04'\'' }}'
+  local governed_runner="runs-on: \${{ (vars.RUNNER_OS == 'ubuntu-24.04' || vars.RUNNER_OS == 'ubuntu-26.04') && vars.RUNNER_OS || 'ubuntu-26.04' }}"
   local governed_jobs=0
 
   for workflow_file in "$REPO_ROOT"/.github/workflows/*.yml; do
