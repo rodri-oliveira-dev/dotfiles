@@ -34,7 +34,7 @@ permissions:
 jobs:
   shell:
     name: Shell validation
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_OS || 'ubuntu-26.04' }}
     timeout-minutes: 10
 
     steps:
@@ -67,7 +67,7 @@ jobs:
 
   container:
     name: Clean container lifecycle
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_OS || 'ubuntu-26.04' }}
     timeout-minutes: 10
     needs: shell
 
