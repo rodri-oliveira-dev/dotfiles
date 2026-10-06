@@ -22,7 +22,7 @@ permissions: {}
 jobs:
   validate:
     name: Validate release request
-    runs-on: ${{ vars.RUNNER_OS || 'ubuntu-26.04' }}
+    runs-on: ${{ (vars.RUNNER_OS == 'ubuntu-24.04' || vars.RUNNER_OS == 'ubuntu-26.04') && vars.RUNNER_OS || 'ubuntu-26.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -54,7 +54,7 @@ jobs:
   publish:
     name: Create tag and release
     needs: validate
-    runs-on: ${{ vars.RUNNER_OS || 'ubuntu-26.04' }}
+    runs-on: ${{ (vars.RUNNER_OS == 'ubuntu-24.04' || vars.RUNNER_OS == 'ubuntu-26.04') && vars.RUNNER_OS || 'ubuntu-26.04' }}
     timeout-minutes: 5
     permissions:
       contents: write
